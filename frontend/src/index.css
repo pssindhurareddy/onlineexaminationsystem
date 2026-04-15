@@ -1,0 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-gray-100 font-body antialiased selection:bg-accent selection:text-white;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading tracking-tight;
+  }
+}
+
+@layer components {
+  /* Basic Card Component */
+  .premium-card {
+    @apply bg-card border border-border rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl hover:shadow-accent/5 overflow-hidden;
+  }
+
+  /* Glassmorphism surface */
+  .glass-panel {
+    @apply bg-surface/80 backdrop-blur-md border border-border rounded-xl;
+  }
+}
+
+/* Custom Scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0A0F1E; 
+}
+::-webkit-scrollbar-thumb {
+  background: #374151; 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4B5563; 
+}
