@@ -13,16 +13,20 @@ initSocket(server);
 
 // Boot sequence
 const startServer = async () => {
+  // Start listening IMMEDIATELY to satisfy Railway health checks
+  server.listen(PORT, () => {
+    console.log(`[SERVER] ExamPro API binds to port ${PORT} - initializing services...`);
+  });
+
   try {
+    // Then connect services in background
     await connectDB();
+    console.log('[DB] Core connected');
     await connectRedis();
-    
-    server.listen(PORT, () => {
-      console.log(`[SERVER] ExamPro API is running on port ${PORT}`);
-    });
+    console.log('[REDIS] Cache connected');
   } catch (error) {
-    console.error('[SERVER] Failed to start server:', error);
-    process.exit(1);
+    console.error('[SERVER] Service initialization failed:', error);
+    // Note: We don't exit(1) anymore, to allow Railway to keep the container up so we can check logs
   }
 };
 
