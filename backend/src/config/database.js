@@ -14,7 +14,7 @@ const sequelize = process.env.DATABASE_URL
       pool: {
         max: 5,
         min: 0,
-        acquire: 30000,
+        acquire: 60000,
         idle: 10000
       }
     })
@@ -27,8 +27,11 @@ const sequelize = process.env.DATABASE_URL
         port: process.env.DB_PORT || 5432,
         dialect: 'postgres',
         logging: false,
+        dialectOptions: {
+          family: 4
+        },
         pool: {
-          max: 10,
+          max: 5,
           min: 0,
           acquire: 30000,
           idle: 10000
