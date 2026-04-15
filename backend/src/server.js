@@ -3,11 +3,17 @@ const http = require('http');
 const PORT = process.env.PORT || 8080;
 
 const server = http.createServer((req, res) => {
-  console.log(`[TRAFFIC] Received ${req.method} request for ${req.url}`);
-  
   if (req.url === '/api/v1/health') {
+    const memory = process.memoryUsage();
     res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-    return res.end(JSON.stringify({ status: 'success', message: 'Nuclear Link Active' }));
+    return res.end(JSON.stringify({ 
+      status: 'success', 
+      message: 'Nuclear Link Active',
+      memory: {
+        rss: `${Math.round(memory.rss / 1024 / 1024)}MB`,
+        heapUsed: `${Math.round(memory.heapUsed / 1024 / 1024)}MB`
+      }
+    }));
   }
 
   res.writeHead(200, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
@@ -30,4 +36,4 @@ setTimeout(() => {
   } catch (err) {
     console.error('[BOOT] Background load failed but SERVER STAYS UP:', err.message);
   }
-}, 5000);
+}, 10000);
