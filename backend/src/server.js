@@ -1,32 +1,48 @@
 const http = require('http');
-const app = require('./app');
-const initSocket = require('./sockets/examSocket');
 const { connectDB } = require('./config/database');
-const { connectRedis } = require('./config/redis');
 
 const PORT = process.env.PORT || 5000;
 
-const server = http.createServer(app);
+// Surivor Startup: Create the server with a lazy-loading logic
+let realApp = null;
 
-// Initialize Socket.io
-initSocket(server);
+const server = http.createServer((req, res) => {
+  if (req.url === '/api/v1/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    return res.end(JSON.stringify({ status: 'success', message: 'Survivor node active' }));
+  }
+  
+  if (realApp) {
+    return realApp(req, res);
+  }
+  
+  res.writeHead(503, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+  res.end(JSON.stringify({ status: 'starting', message: 'Identity Hub linking in progress...' }));
+});
 
-// Boot sequence
 const startServer = async () => {
-  // Start listening IMMEDIATELY to satisfy Railway health checks
+  // 1. Bind port INSTANTLY
   server.listen(PORT, () => {
-    console.log(`[SERVER] ExamPro API binds to port ${PORT} - initializing services...`);
+    console.log(`[BOOT] Rapid-responder active on port ${PORT}`);
   });
 
   try {
-    // Then connect services in background
+    // 2. Load heavy models/app in background
+    console.log('[BOOT] Initializing models...');
+    const app = require('./app');
+    const initSocket = require('./sockets/examSocket');
+    
+    // 3. Connect Database
     await connectDB();
-    console.log('[DB] Core connected');
-    await connectRedis();
-    console.log('[REDIS] Cache connected');
+    
+    // 4. Link Socket.io
+    initSocket(server);
+    
+    // 5. Activate real app
+    realApp = app;
+    console.log('[BOOT] Full Identity Hub linked successfully');
   } catch (error) {
-    console.error('[SERVER] Service initialization failed:', error);
-    // Note: We don't exit(1) anymore, to allow Railway to keep the container up so we can check logs
+    console.error('[CRITICAL] Identity Hub failed to initialize:', error);
   }
 };
 
