@@ -8,18 +8,25 @@ const compression = require('compression');
 
 const app = express();
 
-// ABSOLUTE TOP: CORS must handle pre-flights before any other logic
-app.use(cors({
-  origin: true,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// NUCLEAR CORS: Manual header injection (Bypasses all library limitations)
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 // Security & Diagnostics
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: false, // Essential for cross-domain images/assets
+}));
 app.use((req, res, next) => {
-  console.log(`[CORS DEBUG] Request from Origin: ${req.headers.origin} Path: ${req.path}`);
+  console.log(`[NETWORK DEBUG] ${req.method} ${req.path} from ${req.headers.origin}`);
   next();
 });
 app.use(express.json({ limit: '10kb' }));
