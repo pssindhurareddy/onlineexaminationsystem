@@ -36,11 +36,29 @@ export default function OrganizationWrapper() {
     </div>
   );
 
-  if (!org) return <Navigate to="/" />;
+  if (!org) return (
+    <div className="min-h-screen bg-black flex items-center justify-center p-6">
+      <div className="max-w-md w-full premium-card p-10 border border-red-500/30 text-center space-y-6">
+        <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto text-red-500 border border-red-500/20">
+          <svg size={40} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold font-heading text-white">System Connectivity Issue</h2>
+          <p className="text-gray-400 text-sm">The frontend could not establish a secure handshake with the ExamPro Identity Hub.</p>
+        </div>
+        <div className="bg-red-500/5 p-4 rounded-xl border border-red-500/10 font-mono text-[10px] text-red-400 break-all text-left">
+          <p>CODE: IDENTITY_GATEWAY_TIMEOUT</p>
+          <p className="mt-1">TARGET: {import.meta.env.VITE_API_URL || 'RELATIVE_PATH_ERROR'}</p>
+        </div>
+        <button onClick={() => window.location.href = '/'} className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-2xl transition-all border border-white/10">
+          Try Again
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background text-white">
-      {/* Provide Org Context to Children if needed, for now just render */}
       <Outlet context={{ org }} />
     </div>
   );
