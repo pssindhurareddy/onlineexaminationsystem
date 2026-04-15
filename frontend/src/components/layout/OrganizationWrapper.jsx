@@ -20,7 +20,10 @@ export default function OrganizationWrapper() {
       document.documentElement.style.setProperty('--accent', res.data.data.theme_color || '#00C2FF');
       document.title = `${res.data.data.name} | ExamPro`;
     } catch (err) {
-      console.error("Organization check failed", err);
+      console.error("Organization check failed. API URL:", import.meta.env.VITE_API_URL, "Error:", err.message);
+      if (err.message === 'Network Error') {
+        console.error("CRITICAL: Frontend cannot reach Backend. Check VITE_API_URL and CORS.");
+      }
       setOrg(null);
     } finally {
       setLoading(false);
