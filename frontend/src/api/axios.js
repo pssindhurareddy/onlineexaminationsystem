@@ -19,6 +19,11 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  // SMART ROUTING: If the URL starts with a slash, strip it so it appends correctly to /api/v1/
+  if (config.url && config.url.startsWith('/')) {
+    config.url = config.url.substring(1);
+  }
+
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
