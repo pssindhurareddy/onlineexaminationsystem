@@ -1,7 +1,10 @@
 import axios from 'axios';
 
-let baseUrl = import.meta.env.VITE_API_URL || '/api/v1';
-// Standardize: Ensure baseURL ends with a slash so Axios doesn't strip the /api/v1 path
+let rawUrl = import.meta.env.VITE_API_URL || '/api/v1';
+// NUCLEAR FIX: Remove any accidental spaces or newlines the user might have pasted in Vercel
+let baseUrl = rawUrl.trim();
+
+// Standardize: Ensure baseURL ends with a slash and has no double-slashes
 if (!baseUrl.endsWith('/')) {
   baseUrl = baseUrl + '/';
 }
