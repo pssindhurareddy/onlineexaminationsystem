@@ -24,8 +24,9 @@ server.listen(PORT, '0.0.0.0', () => {
 setTimeout(() => {
   try {
     console.log('[BOOT] Background loading initializing...');
-    require('./app');
-    console.log('[BOOT] System background load success.');
+    const app = require('./app');
+    realApp = app; // ACTIVATE Real App
+    console.log('[BOOT] System background load success. Hub is LIVE.');
   } catch (err) {
     console.error('[BOOT] Background load failed but SERVER STAYS UP:', err.message);
   }
