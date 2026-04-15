@@ -9,10 +9,10 @@ const sequelize = process.env.DATABASE_URL
           require: true,
           rejectUnauthorized: false
         },
-        family: 4 // Force IPv4 to avoid ENETUNREACH on Railway
+        family: 4
       },
       pool: {
-        max: 10,
+        max: 5,
         min: 0,
         acquire: 30000,
         idle: 10000
