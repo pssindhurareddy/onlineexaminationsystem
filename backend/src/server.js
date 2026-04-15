@@ -3,10 +3,13 @@ const { connectDB } = require('./config/database');
 
 const PORT = process.env.PORT || 5000;
 
-// Surivor Startup: Create the server with a lazy-loading logic
+// Survivor Startup: Create the server with a lazy-loading logic
 let realApp = null;
 
 const server = http.createServer((req, res) => {
+  // FAST LOG: Log every single request to see if traffic is even reaching the app
+  console.log(`[TRAFFIC] ${req.method} ${req.url} - Current Status: ${realApp ? 'READY' : 'STARTING'}`);
+  
   if (req.url === '/api/v1/health') {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
     return res.end(JSON.stringify({ status: 'success', message: 'Survivor node active' }));

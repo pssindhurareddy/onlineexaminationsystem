@@ -5,9 +5,9 @@ let rawUrl = import.meta.env.VITE_API_URL || 'https://onlineexaminationsystem-pr
 // ULTIMATE SCRUB: Delete all spaces, newlines, and tabs
 let baseUrl = rawUrl.replace(/\s/g, '');
 
-// Standardize: Ensure baseURL DOES NOT end with a slash (since paths usually start with one)
-if (baseUrl.endsWith('/')) {
-  baseUrl = baseUrl.slice(0, -1);
+// Standardize: Ensure baseURL ends with a SINGLE slash
+if (!baseUrl.endsWith('/')) {
+  baseUrl = baseUrl + '/';
 }
 
 const api = axios.create({
