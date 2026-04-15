@@ -21,9 +21,17 @@ const server = http.createServer((req, res) => {
 });
 
 const startServer = async () => {
-  // 1. Bind port INSTANTLY
-  server.listen(PORT, () => {
-    console.log(`[BOOT] Rapid-responder active on port ${PORT}`);
+  // 1. Bind port INSTANTLY and GLOBALLY (0.0.0.0 is critical for Railway)
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`[BOOT] Global responder active on 0.0.0.0:${PORT}`);
+  });
+
+  process.on('uncaughtException', (err) => {
+    console.error('[STABILITY] Caught unhandled exception:', err);
+  });
+  
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('[STABILITY] Unhandled Rejection at:', promise, 'reason:', reason);
   });
 
   try {
