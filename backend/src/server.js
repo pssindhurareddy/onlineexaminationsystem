@@ -1,24 +1,30 @@
 const http = require('http');
 
-// THE SMOKING GUN: Match the Railway Dashboard Port (4988)
-const PORT = process.env.PORT || 4988;
+// THE ABSOLUTE TRUTH: Use the specific port from your Railway Screenshot
+const PORT = 4988; 
 
 const server = http.createServer((req, res) => {
+  // LOG EVERY SINGLE HIT: This will show up in your Railway 'Logs' tab
+  console.log(`[TRAFFIC] Received ${req.method} for ${req.url}`);
+
   if (req.url === '/' || req.url === '/api/v1/health') {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-    return res.end(JSON.stringify({ status: 'success', message: 'IDENTITY_HUB_CONNECTED', port: PORT }));
+    return res.end(JSON.stringify({ status: 'success', message: 'IDENTITY_HUB_ONLINE', target_port: PORT }));
   }
 
-  // Handle all other traffic through the real app
   if (realApp) return realApp(req, res);
   
   res.writeHead(503, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-  res.end(JSON.stringify({ status: 'starting', message: 'Identity Hub waking up on 4988...' }));
+  res.end(JSON.stringify({ status: 'starting', message: 'System warming up...' }));
 });
 
-// Bind port immediately
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`[BOOT] SUCCESS! Server listening on GLOBAL PORT ${PORT}`);
+// Bind port UNCONDITIONALLY
+server.listen(PORT, () => {
+  console.log(`[BOOT] IDENTITY_HUB SUCCESS! Listening on Port ${PORT}`);
+});
+
+server.on('error', (err) => {
+  console.error('[CRITICAL] Port Binding Failed:', err);
 });
 
 // Load everything else AFTER the server is 100% up
