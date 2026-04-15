@@ -3,15 +3,18 @@ const http = require('http');
 const PORT = process.env.PORT || 8080;
 
 const server = http.createServer((req, res) => {
-  if (req.url === '/api/v1/health') {
+  // LOG EVERYTHING: We need to see what domain is actually hitting the server
+  console.log(`[NETWORK_DEBUG] Host: ${req.headers.host} | Path: ${req.url}`);
+
+  if (req.url === '/' || req.url === '/api/v1/health') {
     const memory = process.memoryUsage();
     res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
     return res.end(JSON.stringify({ 
       status: 'success', 
-      message: 'Nuclear Link Active',
+      message: 'IDENTITY_HUB_CONNECTED',
+      service: process.env.RAILWAY_SERVICE_NAME || 'Unknown',
       memory: {
-        rss: `${Math.round(memory.rss / 1024 / 1024)}MB`,
-        heapUsed: `${Math.round(memory.heapUsed / 1024 / 1024)}MB`
+        rss: `${Math.round(memory.rss / 1024 / 1024)}MB`
       }
     }));
   }
