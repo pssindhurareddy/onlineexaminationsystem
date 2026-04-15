@@ -22,7 +22,9 @@ export default function OrganizationWrapper() {
     } catch (err) {
       console.error("Organization check failed. API URL:", import.meta.env.VITE_API_URL, "Error:", err.message);
       const status = err.response?.status || 'NETWORK_BLOCKED';
-      setOrg({ errorState: true, status, message: err.message });
+      // Capture the full URL if available
+      const fullUrl = err.config?.url ? (err.config.baseURL + err.config.url) : 'COMPUTATION_ERROR';
+      setOrg({ errorState: true, status, message: err.message, fullUrl });
     } finally {
       setLoading(false);
     }
@@ -46,7 +48,7 @@ export default function OrganizationWrapper() {
         </div>
         <div className="bg-red-500/5 p-4 rounded-xl border border-red-500/10 font-mono text-[10px] text-red-400 break-all text-left">
           <p>CODE: {org.status}</p>
-          <p className="mt-1">TARGET: {import.meta.env.VITE_API_URL || 'RELATIVE_PATH_ERROR'}</p>
+          <p className="mt-1">FINAL_URL: {org.fullUrl}</p>
           <p className="mt-1">MESSAGE: {org.message}</p>
         </div>
         <button onClick={() => window.location.href = '/'} className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-2xl transition-all border border-white/10">
