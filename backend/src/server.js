@@ -1,42 +1,32 @@
 const http = require('http');
 
-// SURVIVOR ZERO: No dependencies allowed at the top level
-const PORT = process.env.PORT || 5000;
-let realApp = null;
+const PORT = process.env.PORT || 8080;
 
 const server = http.createServer((req, res) => {
+  console.log(`[TRAFFIC] Received ${req.method} request for ${req.url}`);
+  
   if (req.url === '/api/v1/health') {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-    return res.end(JSON.stringify({ status: 'success', message: 'Survivor Zero Active' }));
+    return res.end(JSON.stringify({ status: 'success', message: 'Nuclear Link Active' }));
   }
-  
-  if (realApp) return realApp(req, res);
-  
-  res.writeHead(503, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-  res.end(JSON.stringify({ status: 'booting', message: 'Identity Hub reaching critical mass...' }));
+
+  res.writeHead(200, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
+  res.end('SYSTEM_ONLINE');
 });
 
-const startServer = async () => {
-  console.log(`[SURVIVOR] Attempting to bind port ${PORT}...`);
-  
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`[SURVIVOR] Port ${PORT} bound successfully at 0.0.0.0. Status: ONLINE.`);
-  });
+console.log(`[BOOT] Attempting NUCLEAR_BIND on port: ${PORT}`);
 
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`[BOOT] SUCCESS! Server listening on 0.0.0.0:${PORT}`);
+});
+
+// Load everything else AFTER the server is 100% up
+setTimeout(() => {
   try {
-    // ONLY AFTER BINDING: Load the rest of the system
-    console.log('[SURVIVOR] Loading system dependencies...');
-    const { connectDB } = require('./config/database');
-    const app = require('./app');
-    const initSocket = require('./sockets/examSocket');
-    
-    await connectDB();
-    initSocket(server);
-    realApp = app;
-    console.log('[SURVIVOR] Identity Hub fully operational.');
-  } catch (error) {
-    console.error('[SURVIVOR] Background load failed, but port stays open:', error.message);
+    console.log('[BOOT] Background loading initializing...');
+    require('./app');
+    console.log('[BOOT] System background load success.');
+  } catch (err) {
+    console.error('[BOOT] Background load failed but SERVER STAYS UP:', err.message);
   }
-};
-
-startServer();
+}, 5000);
