@@ -21,10 +21,8 @@ export default function OrganizationWrapper() {
       document.title = `${res.data.data.name} | ExamPro`;
     } catch (err) {
       console.error("Organization check failed. API URL:", import.meta.env.VITE_API_URL, "Error:", err.message);
-      if (err.message === 'Network Error') {
-        console.error("CRITICAL: Frontend cannot reach Backend. Check VITE_API_URL and CORS.");
-      }
-      setOrg(null);
+      const status = err.response?.status || 'NETWORK_BLOCKED';
+      setOrg({ errorState: true, status, message: err.message });
     } finally {
       setLoading(false);
     }
@@ -36,7 +34,7 @@ export default function OrganizationWrapper() {
     </div>
   );
 
-  if (!org) return (
+  if (org?.errorState) return (
     <div className="min-h-screen bg-black flex items-center justify-center p-6">
       <div className="max-w-md w-full premium-card p-10 border border-red-500/30 text-center space-y-6">
         <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto text-red-500 border border-red-500/20">
@@ -44,14 +42,15 @@ export default function OrganizationWrapper() {
         </div>
         <div className="space-y-2">
           <h2 className="text-2xl font-bold font-heading text-white">System Connectivity Issue</h2>
-          <p className="text-gray-400 text-sm">The frontend could not establish a secure handshake with the ExamPro Identity Hub.</p>
+          <p className="text-gray-400 text-sm">The identity gateway responded with an error while establishing a secure handshake.</p>
         </div>
         <div className="bg-red-500/5 p-4 rounded-xl border border-red-500/10 font-mono text-[10px] text-red-400 break-all text-left">
-          <p>CODE: IDENTITY_GATEWAY_TIMEOUT</p>
+          <p>CODE: {org.status}</p>
           <p className="mt-1">TARGET: {import.meta.env.VITE_API_URL || 'RELATIVE_PATH_ERROR'}</p>
+          <p className="mt-1">MESSAGE: {org.message}</p>
         </div>
         <button onClick={() => window.location.href = '/'} className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-2xl transition-all border border-white/10">
-          Try Again
+          Return and Retransmit
         </button>
       </div>
     </div>

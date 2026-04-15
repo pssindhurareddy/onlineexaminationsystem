@@ -8,19 +8,20 @@ const compression = require('compression');
 
 const app = express();
 
-// Security Middlewares
-app.use(helmet());
-app.use((req, res, next) => {
-  console.log(`[CORS DEBUG] Request from Origin: ${req.headers.origin}`);
-  next();
-});
-
+// ABSOLUTE TOP: CORS must handle pre-flights before any other logic
 app.use(cors({
   origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Security & Diagnostics
+app.use(helmet());
+app.use((req, res, next) => {
+  console.log(`[CORS DEBUG] Request from Origin: ${req.headers.origin} Path: ${req.path}`);
+  next();
+});
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
