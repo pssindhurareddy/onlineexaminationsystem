@@ -27,7 +27,6 @@ export default function TakeExam() {
   const [timeLeft, setTimeLeft] = useState(null);
   const [lastSaved, setLastSaved] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [warnings, setWarnings] = useState(0);
   const warningsRef = useRef(0);
 
   // ─── Init ────────────────────────────────────────────────────────────────────
