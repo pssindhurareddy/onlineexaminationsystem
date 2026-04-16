@@ -19,6 +19,7 @@ export default function UsersRoster() {
   const [provisionData, setProvisionData] = useState({ name: '', email: '', role: 'student' });
   const [bulkList, setBulkList] = useState('');
   const [results, setResults] = useState(null);
+  const [approvedKey, setApprovedKey] = useState(null); // { name, key }
 
   useEffect(() => {
     fetchData();
@@ -89,8 +90,9 @@ export default function UsersRoster() {
 
   const handleAuthorize = async (id) => {
     try {
-      await api.patch(`/admin/users/${id}/approve`);
-      alert("Identity Authorized.");
+      const res = await api.patch(`/admin/users/${id}/approve`);
+      const approvedUser = requests.find(r => r.id === id);
+      setApprovedKey({ name: approvedUser?.name || 'User', key: res.data.genesisKey });
       fetchData();
     } catch (err) {
       alert("Authorization failed.");
@@ -126,6 +128,32 @@ export default function UsersRoster() {
           <p className="text-gray-400 mt-2 text-lg">Provision identities and manage academic enrollments.</p>
         </div>
       </div>
+
+      {approvedKey && (
+        <div className="premium-card p-8 border border-accent/20 bg-accent/5">
+           <div className="flex items-center gap-4 mb-4">
+              <CheckCircle2 className="text-accent" size={32} />
+              <div>
+                 <h2 className="text-xl font-bold text-white">Identity Authorized</h2>
+                 <p className="text-xs text-gray-400 mt-1">Provide this Genesis Key to <strong>{approvedKey.name}</strong> if the activation email was not received.</p>
+              </div>
+              <button onClick={() => setApprovedKey(null)} className="ml-auto text-[10px] font-bold text-gray-400 hover:text-white">Dismiss</button>
+           </div>
+           <div className="flex items-center gap-4 p-4 bg-black/40 border border-white/5 rounded-xl w-fit">
+              <div>
+                 <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-1">Genesis Activation Key</p>
+                 <span className="text-2xl font-black tracking-[0.3em] text-accent font-mono">{approvedKey.key}</span>
+              </div>
+              <button
+                onClick={() => copyToClipboard('approved', approvedKey.key)}
+                className="p-2.5 rounded-xl bg-accent/10 border border-accent/20 text-accent hover:bg-accent hover:text-background transition-all ml-4"
+                title="Copy key"
+              >
+                <Copy size={16} />
+              </button>
+           </div>
+        </div>
+      )}
 
       {results && (
         <div className="premium-card p-8 border border-success/20 bg-success/5">

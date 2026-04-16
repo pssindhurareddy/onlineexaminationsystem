@@ -63,7 +63,7 @@ class AdminController {
     try {
       const requests = await User.findAll({
         where: { organization_id: req.user.organization_id, account_status: 'PENDING_APPROVAL' },
-        attributes: ['id', 'name', 'email', 'role', ['created_at', 'createdAt']]
+        attributes: ['id', 'name', 'email', 'role', 'createdAt']
       });
       res.json({ success: true, data: requests });
     } catch (err) {
@@ -89,6 +89,7 @@ class AdminController {
       const { sendMail } = require('../config/email');
       const { Organization } = require('../models');
       const org = await Organization.findByPk(req.user.organization_id);
+      if (!org) return res.json({ success: true, message: 'Identity authorized. Email notification skipped (organization not found). Share the Genesis Key manually.', genesisKey });
 
       const html = `
         <div style="font-family: 'Inter', sans-serif; background: #050A15; color: white; padding: 40px; border-radius: 20px; max-width: 600px; margin: auto; border: 1px solid rgba(0,194,255,0.2);">
