@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-let rawUrl = import.meta.env.VITE_API_URL || 'https://onlineexaminationsystem-production.up.railway.app/api/v1';
+let rawUrl = import.meta.env.VITE_API_URL || '/api/v1';
 
 // ULTIMATE SCRUB: Delete all spaces, newlines, and tabs
 let baseUrl = rawUrl.replace(/\s/g, '');

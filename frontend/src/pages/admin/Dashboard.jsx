@@ -24,6 +24,7 @@ export default function AdminDashboard() {
   });
   const [requests, setRequests] = useState([]);
   const [approvingId, setApprovingId] = useState(null);
+  const [loadingRequests, setLoadingRequests] = useState(false);
 
   useEffect(() => {
     fetchStats();
@@ -41,10 +42,13 @@ export default function AdminDashboard() {
 
   const fetchRequests = async () => {
     try {
+      setLoadingRequests(true);
       const res = await api.get('/admin/users/pending-requests');
-      setRequests(res.data.data);
+      setRequests(res.data.data || []);
     } catch (err) {
       console.error("Requests fetching failed", err);
+    } finally {
+      setLoadingRequests(false);
     }
   };
 
@@ -122,8 +126,10 @@ export default function AdminDashboard() {
               <h2 className="text-sm font-black uppercase tracking-[0.2em] text-gray-500">Access Requests</h2>
               <p className="text-lg font-bold text-white mt-1">Pending Authorization</p>
            </div>
-           <div className="flex-1 overflow-y-auto max-h-[400px] custom-scrollbar p-6 space-y-4">
-              {requests.length === 0 ? (
+            <div className="flex-1 overflow-y-auto max-h-[400px] custom-scrollbar p-6 space-y-4">
+              {loadingRequests ? (
+                <div className="p-12 text-center text-gray-600 animate-pulse uppercase tracking-widest text-[10px] font-black">Synchronizing Identity Web...</div>
+              ) : requests.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center opacity-40 py-12">
                    <UserCheck size={48} className="mb-4 text-gray-700" />
                    <p className="text-xs font-bold uppercase tracking-widest text-gray-700">Identity Queue Empty</p>
@@ -139,14 +145,14 @@ export default function AdminDashboard() {
                      <button 
                        disabled={approvingId === r.id}
                        onClick={() => handleApprove(r.id)}
-                       className="w-full bg-accent hover:bg-accent/80 text-background py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all"
+                       className="w-full bg-accent hover:bg-accent/80 text-background py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all shadow-glow-sm"
                      >
                         {approvingId === r.id ? 'Authorizing...' : 'Grant Access'}
                      </button>
                   </div>
                 ))
               )}
-           </div>
+            </div>
         </div>
       </div>
     </div>

@@ -13,6 +13,7 @@ import DashboardLayout from './components/layout/DashboardLayout';
 import AdminDashboard from './pages/admin/Dashboard';
 import FacultyDashboard from './pages/faculty/Dashboard';
 import QuestionBank from './pages/faculty/QuestionBank';
+import ExamResults from './pages/faculty/ExamResults';
 import UsersRoster from './pages/admin/Users';
 import AcademicsManagement from './pages/admin/Academics';
 import StudentDashboard from './pages/student/Dashboard';
@@ -61,7 +62,8 @@ function App() {
               <Route path="faculty/dashboard" element={<FacultyDashboard />} />
               <Route path="faculty/exams" element={<FacultyDashboard />} />
               <Route path="faculty/question-bank" element={<QuestionBank />} />
-              <Route path="faculty/results" element={<div className="p-8 text-center text-gray-500">Evaluation Results</div>} />
+              <Route path="faculty/exams/:examId/results" element={<ExamResults />} />
+              <Route path="faculty/results" element={<FacultyDashboard />} />
             </Route>
 
             {/* Student Portal Dashboard */}

@@ -1,4 +1,4 @@
-const { User, Exam, Result, Batch, Department } = require('../models');
+const { User, Exam, ExamAttempt, Batch, Department } = require('../models');
 const bcrypt = require('bcrypt');
 
 class AdminController {
@@ -10,7 +10,7 @@ class AdminController {
           organization_id: req.user.organization_id,
           account_status: { [require('sequelize').Op.ne]: 'PENDING_APPROVAL' }
         },
-        attributes: ['id', 'name', 'email', 'role', 'is_active', 'account_status', 'genesis_key', 'created_at'],
+        attributes: ['id', 'name', 'email', 'role', 'is_active', 'account_status', 'genesis_key', 'createdAt'],
         include: [{ model: Batch, through: { attributes: [] } }]
       });
       res.json({ success: true, data: users });
@@ -63,7 +63,7 @@ class AdminController {
     try {
       const requests = await User.findAll({
         where: { organization_id: req.user.organization_id, account_status: 'PENDING_APPROVAL' },
-        attributes: ['id', 'name', 'email', 'role', 'created_at']
+        attributes: ['id', 'name', 'email', 'role', ['created_at', 'createdAt']]
       });
       res.json({ success: true, data: requests });
     } catch (err) {
@@ -132,18 +132,22 @@ class AdminController {
     try {
       const orgId = req.user.organization_id;
       
-      const [studentCount, facultyCount, examCount, passRateData] = await Promise.all([
+      const [studentCount, facultyCount, examCount, attemptsData] = await Promise.all([
         User.count({ where: { organization_id: orgId, role: 'student' } }),
         User.count({ where: { organization_id: orgId, role: 'faculty' } }),
         Exam.count({ where: { organization_id: orgId } }),
-        Result.findAll({ 
-          include: [{ model: Exam, where: { organization_id: orgId }, attributes: [] }],
-          attributes: ['passed']
+        ExamAttempt.findAll({ 
+          include: [{ 
+            model: Exam, 
+            where: { organization_id: orgId }, 
+            attributes: ['pass_marks'] 
+          }],
+          attributes: ['total_score', ['created_at', 'createdAt']]
         })
       ]);
-
-      const totalResults = passRateData.length;
-      const passedCount = passRateData.filter(r => r.passed).length;
+      
+      const totalResults = attemptsData.length;
+      const passedCount = attemptsData.filter(a => a.total_score >= (a.Exam?.pass_marks || 0)).length;
       const passRate = totalResults > 0 ? Math.round((passedCount / totalResults) * 100) : 0;
 
       res.json({

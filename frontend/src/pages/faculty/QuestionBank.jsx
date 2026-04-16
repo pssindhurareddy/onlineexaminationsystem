@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/axios';
-import { Database, CheckCircle2, X, Plus, Layers, Target, Settings, Save, ListChecks, Type, AlertCircle, Trash2, Clock, BookOpen, Send } from 'lucide-react';
+import { Database, CheckCircle2, X, Plus, Layers, Target, Settings, Save, ListChecks, Type, AlertCircle, Trash2, Clock, BookOpen, Send, Calendar, ToggleLeft, ToggleRight, Play, Square, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function QuestionBank() {
+  const navigate = useNavigate();
+  const { orgSlug } = useParams();
   const [exams, setExams] = useState([]);
   const [selectedExam, setSelectedExam] = useState(null);
-  const [activeTab, setActiveTab] = useState('questions'); // 'questions' or 'settings'
+  const [activeTab, setActiveTab] = useState('questions'); // 'questions', 'configure', 'authorization'
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -29,6 +32,17 @@ export default function QuestionBank() {
 
   // Settings Form State
   const [assignedSections, setAssignedSections] = useState([]);
+
+  // Exam Configure State
+  const [configForm, setConfigForm] = useState({
+    title: '', subject: '', instructions: '',
+    total_marks: 100, pass_marks: 40, duration_minutes: 60, max_attempts: 1,
+    scheduled_start: '', scheduled_end: '',
+    negative_marking_enabled: false, negative_marks_per_wrong: 0,
+    shuffle_questions: false, shuffle_options: false,
+    show_result_immediately: true, show_answer_key: true,
+    status: 'draft'
+  });
 
   useEffect(() => {
     fetchExams();
@@ -73,8 +87,43 @@ export default function QuestionBank() {
       setSelectedExam(res.data.data);
       const currentAssigned = res.data.data.AssignedSections?.map(s => s.id) || [];
       setAssignedSections(currentAssigned);
+      // Populate config form
+      const e = res.data.data;
+      setConfigForm({
+        title: e.title || '',
+        subject: e.subject || '',
+        instructions: e.instructions || '',
+        total_marks: e.total_marks || 100,
+        pass_marks: e.pass_marks || 40,
+        duration_minutes: e.duration_minutes || 60,
+        max_attempts: e.max_attempts || 1,
+        scheduled_start: e.scheduled_start ? new Date(e.scheduled_start).toISOString().slice(0, 16) : '',
+        scheduled_end: e.scheduled_end ? new Date(e.scheduled_end).toISOString().slice(0, 16) : '',
+        negative_marking_enabled: !!e.negative_marking_enabled,
+        negative_marks_per_wrong: e.negative_marks_per_wrong || 0,
+        shuffle_questions: !!e.shuffle_questions,
+        shuffle_options: !!e.shuffle_options,
+        show_result_immediately: e.show_result_immediately !== false,
+        show_answer_key: e.show_answer_key !== false,
+        status: e.status || 'draft'
+      });
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleUpdateSettings = async () => {
+    if (!selectedExam) return;
+    try {
+      await api.put(`/exams/${selectedExam.id}`, {
+        ...configForm,
+        scheduled_start: configForm.scheduled_start || null,
+        scheduled_end: configForm.scheduled_end || null
+      });
+      showToast('Exam settings updated.');
+      loadExam(selectedExam.id);
+    } catch (err) {
+      showToast('Failed to update settings.', 'error');
     }
   };
 
@@ -178,11 +227,14 @@ export default function QuestionBank() {
           <p className="text-gray-400 mt-1">Design, configure, and authorize academic assessments.</p>
         </div>
         <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 shadow-inner">
-           <button onClick={()=>setActiveTab('questions')} className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab==='questions' ? 'bg-accent text-background shadow-lg' : 'text-gray-400 hover:text-white'}`}>
-             <ListChecks size={18} /> Question Bank
+           <button onClick={()=>setActiveTab('questions')} className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab==='questions' ? 'bg-accent text-background shadow-lg' : 'text-gray-400 hover:text-white'}`}>
+             <ListChecks size={16} /> Question Bank
            </button>
-           <button onClick={()=>setActiveTab('settings')} className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab==='settings' ? 'bg-accent text-background shadow-lg' : 'text-gray-400 hover:text-white'}`}>
-             <Settings size={18} /> Authorization
+           <button onClick={()=>setActiveTab('configure')} className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab==='configure' ? 'bg-accent text-background shadow-lg' : 'text-gray-400 hover:text-white'}`}>
+             <Settings size={16} /> Configure
+           </button>
+           <button onClick={()=>setActiveTab('settings')} className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab==='settings' ? 'bg-accent text-background shadow-lg' : 'text-gray-400 hover:text-white'}`}>
+             <Target size={16} /> Authorization
            </button>
         </div>
       </div>
@@ -204,8 +256,21 @@ export default function QuestionBank() {
                    className={`rounded-xl border p-4 cursor-pointer transition-all duration-300 ${isSelected ? 'border-accent bg-accent/5' : 'border-white/5 bg-black/20 hover:border-white/20'}`}
                    onClick={() => loadExam(exam.id)}
                  >
-                    <div className={`font-bold truncate ${isSelected ? 'text-accent' : 'text-gray-300'}`}>{exam.title}</div>
-                    <div className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-bold">{exam.subject} • {exam.status}</div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className={`font-bold truncate ${isSelected ? 'text-accent' : 'text-gray-300'}`}>{exam.title}</div>
+                        <div className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-bold">{exam.subject} • {exam.status}</div>
+                      </div>
+                      {isSelected && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigate(`/org/${orgSlug}/faculty/exams/${exam.id}/results`); }}
+                          title="View Results"
+                          className="flex-shrink-0 p-1.5 rounded-lg bg-accent/10 border border-accent/20 text-accent hover:bg-accent hover:text-background transition-all"
+                        >
+                          <BarChart3 size={12} />
+                        </button>
+                      )}
+                    </div>
                  </div>
                );
             })}
@@ -349,8 +414,8 @@ export default function QuestionBank() {
                     </div>
                   </div>
                 </motion.div>
-              ) : (
-                <motion.div key="settings" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-10 space-y-12 overflow-y-auto custom-scrollbar">
+              ) : activeTab === 'settings' ? (
+                <motion.div key="authorization" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-10 space-y-12 overflow-y-auto custom-scrollbar">
                    <div className="space-y-6">
                       <h2 className="text-xl font-bold font-heading flex items-center gap-3">
                          <Target size={24} className="text-accent" /> Institutional Authorized Cohorts
@@ -403,6 +468,119 @@ export default function QuestionBank() {
                          <Send size={18} /> Update Authorization parameters
                       </button>
                    </div>
+                </motion.div>
+              ) : activeTab === 'configure' ? (
+                <motion.div key="configure" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-8 space-y-8 overflow-y-auto custom-scrollbar h-full">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-bold text-white">Exam Configuration</h2>
+                      <p className="text-gray-500 text-sm mt-1">Set scheduling, scoring rules, and behavior settings.</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {/* Status badge */}
+                      <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                        selectedExam?.status === 'active' ? 'bg-green-500/10 border-green-500/20 text-green-400' :
+                        selectedExam?.status === 'published' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
+                        selectedExam?.status === 'ended' ? 'bg-gray-500/10 border-gray-500/20 text-gray-400' :
+                        'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+                      }`}>{selectedExam?.status}</span>
+                    </div>
+                  </div>
+
+                  {/* Status control */}
+                  <div className="p-5 bg-black/40 border border-white/5 rounded-2xl space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Exam Status</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {['draft', 'published', 'active', 'ended'].map(s => (
+                        <button key={s} onClick={() => setConfigForm(f => ({ ...f, status: s }))} className={`px-5 py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${configForm.status === s ? 'bg-accent text-background border-accent' : 'bg-white/5 border-white/10 text-gray-500 hover:border-white/30'}`}>
+                          {s === 'draft' ? '⚪ Draft' : s === 'published' ? '🔵 Published' : s === 'active' ? '🟢 Active' : '🔴 Ended'}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-gray-600">Students can only attempt exams with status <span className="text-accent">Active</span>.</p>
+                  </div>
+
+                  {/* Basic settings */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Exam Title</label>
+                      <input value={configForm.title} onChange={e => setConfigForm(f => ({ ...f, title: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white focus:border-accent outline-none text-sm" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Subject</label>
+                      <input value={configForm.subject} onChange={e => setConfigForm(f => ({ ...f, subject: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white focus:border-accent outline-none text-sm" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Total Marks</label>
+                      <input type="number" value={configForm.total_marks} onChange={e => setConfigForm(f => ({ ...f, total_marks: Number(e.target.value) }))} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white focus:border-accent outline-none text-sm" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Pass Marks</label>
+                      <input type="number" value={configForm.pass_marks} onChange={e => setConfigForm(f => ({ ...f, pass_marks: Number(e.target.value) }))} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white focus:border-accent outline-none text-sm" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1"><Clock size={10} /> Duration (minutes)</label>
+                      <input type="number" value={configForm.duration_minutes} onChange={e => setConfigForm(f => ({ ...f, duration_minutes: Number(e.target.value) }))} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white focus:border-accent outline-none text-sm" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Max Attempts</label>
+                      <input type="number" min="1" value={configForm.max_attempts} onChange={e => setConfigForm(f => ({ ...f, max_attempts: Number(e.target.value) }))} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white focus:border-accent outline-none text-sm" />
+                    </div>
+                  </div>
+
+                  {/* Scheduling */}
+                  <div className="p-5 bg-black/40 border border-white/5 rounded-2xl space-y-4">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-2"><Calendar size={12} /> Exam Window (Optional)</label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] text-gray-600">Start Date & Time</label>
+                        <input type="datetime-local" value={configForm.scheduled_start} onChange={e => setConfigForm(f => ({ ...f, scheduled_start: e.target.value }))} className="w-full bg-[#050A15] border border-white/10 rounded-xl p-3 text-white focus:border-accent outline-none text-sm" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] text-gray-600">End Date & Time</label>
+                        <input type="datetime-local" value={configForm.scheduled_end} onChange={e => setConfigForm(f => ({ ...f, scheduled_end: e.target.value }))} className="w-full bg-[#050A15] border border-white/10 rounded-xl p-3 text-white focus:border-accent outline-none text-sm" />
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-gray-600">Students can only start the exam within this time window if set.</p>
+                  </div>
+
+                  {/* Instructions */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Student Instructions</label>
+                    <textarea rows={4} value={configForm.instructions} onChange={e => setConfigForm(f => ({ ...f, instructions: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-accent outline-none text-sm resize-none" placeholder="e.g. Read all questions carefully before answering..." />
+                  </div>
+
+                  {/* Toggles */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {[
+                      { key: 'negative_marking_enabled', label: 'Negative Marking', desc: 'Deduct marks for wrong answers' },
+                      { key: 'shuffle_questions', label: 'Shuffle Questions', desc: 'Randomize question order per student' },
+                      { key: 'shuffle_options', label: 'Shuffle Options', desc: 'Randomize MCQ option order per student' },
+                      { key: 'show_result_immediately', label: 'Instant Results', desc: 'Show score immediately after submission' },
+                      { key: 'show_answer_key', label: 'Show Answer Key', desc: 'Display correct answers after submission' },
+                    ].map(({ key, label, desc }) => (
+                      <div key={key} onClick={() => setConfigForm(f => ({ ...f, [key]: !f[key] }))} className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${configForm[key] ? 'bg-accent/5 border-accent/20' : 'bg-black/40 border-white/5 hover:border-white/20'}`}>
+                        <div>
+                          <p className={`text-sm font-bold ${configForm[key] ? 'text-white' : 'text-gray-400'}`}>{label}</p>
+                          <p className="text-[10px] text-gray-600 mt-0.5">{desc}</p>
+                        </div>
+                        {configForm[key] ? <ToggleRight size={24} className="text-accent flex-shrink-0" /> : <ToggleLeft size={24} className="text-gray-600 flex-shrink-0" />}
+                      </div>
+                    ))}
+
+                    {configForm.negative_marking_enabled && (
+                      <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-xl space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-red-400">Marks Deducted Per Wrong Answer</label>
+                        <input type="number" min="0" step="0.25" value={configForm.negative_marks_per_wrong} onChange={e => setConfigForm(f => ({ ...f, negative_marks_per_wrong: Number(e.target.value) }))} className="w-full bg-black/60 border border-red-500/20 rounded-xl p-3 text-white focus:border-red-400 outline-none text-sm" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-6 border-t border-white/5 flex justify-end">
+                    <button onClick={handleUpdateSettings} className="flex items-center gap-2 bg-accent text-background font-black px-10 py-5 rounded-2xl hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase tracking-widest">
+                      <Save size={18} /> Save Configuration
+                    </button>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
