@@ -32,8 +32,20 @@ export default function ExamResults() {
     }
   };
 
-  const handleExport = () => {
-    window.open(`${import.meta.env.VITE_API_URL || ''}/api/exams/${examId}/export`, '_blank');
+  const handleExport = async () => {
+    try {
+      const res = await api.get(`/exams/${examId}/export`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `exam_results_${examId}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Export failed. Please try again.');
+    }
   };
 
   const formatDuration = (secs) => {

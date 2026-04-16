@@ -449,7 +449,7 @@ export default function QuestionBank() {
                                    >
                                       <div>
                                          <div className={`font-bold ${isActive ? 'text-accent' : 'text-gray-300'}`}>{s.name}</div>
-                                         <div className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Section {s.section}</div>
+                                         <div className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Year {s.year}</div>
                                       </div>
                                       {isActive ? <CheckCircle2 size={18} className="text-accent shadow-glow" /> : <div className="w-4 h-4 rounded-full border border-gray-800" />}
                                    </div>

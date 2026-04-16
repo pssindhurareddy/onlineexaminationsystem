@@ -6,11 +6,16 @@ class AcademicController {
   static async createDepartment(req, res, next) {
     try {
       const { name, code } = req.body;
+      if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Department name is required' });
+      if (!code || !code.trim()) return res.status(400).json({ success: false, message: 'Department code is required' });
       const orgId = req.user.organization_id;
 
+      const existing = await Department.findOne({ where: { organization_id: orgId, code: code.trim().toUpperCase() } });
+      if (existing) return res.status(409).json({ success: false, message: `Department with code '${code.toUpperCase()}' already exists` });
+
       const department = await Department.create({
-        name,
-        code,
+        name: name.trim(),
+        code: code.trim().toUpperCase(),
         organization_id: orgId
       });
 
@@ -23,11 +28,16 @@ class AcademicController {
   static async createBatch(req, res, next) {
     try {
       const { name, year, departmentId } = req.body;
+      if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Section name is required' });
+      if (!departmentId) return res.status(400).json({ success: false, message: 'Department is required' });
       const orgId = req.user.organization_id;
 
+      const existing = await Batch.findOne({ where: { organization_id: orgId, department_id: departmentId, name: name.trim(), year: year || new Date().getFullYear() } });
+      if (existing) return res.status(409).json({ success: false, message: `Section '${name}' already exists for this year` });
+
       const batch = await Batch.create({
-        name,
-        year,
+        name: name.trim(),
+        year: year || new Date().getFullYear(),
         department_id: departmentId,
         organization_id: orgId
       });

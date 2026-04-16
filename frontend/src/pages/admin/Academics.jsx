@@ -36,25 +36,28 @@ export default function AcademicsManagement() {
 
   const handleCreateDept = async (e) => {
     e.preventDefault();
+    if (!deptData.name.trim()) return alert('Department name is required.');
+    if (!deptData.code.trim()) return alert('Department code is required.');
     try {
       await api.post('/org/courses', deptData);
       setDeptData({ name: '', code: '' });
       setShowDeptModal(false);
       fetchStructure();
     } catch (err) {
-      alert("Failed to create department");
+      alert(err.response?.data?.message || 'Failed to create department. Name or code may already exist.');
     }
   };
 
   const handleCreateBatch = async (e) => {
     e.preventDefault();
+    if (!batchData.name.trim()) return alert('Section name is required.');
     try {
       await api.post('/org/sections', { ...batchData, departmentId: selectedDept.id });
       setBatchData({ name: '', year: new Date().getFullYear() });
       setShowBatchModal(false);
       fetchStructure();
     } catch (err) {
-      alert("Failed to create section");
+      alert(err.response?.data?.message || 'Failed to create section. Name may already exist for this year.');
     }
   };
 
