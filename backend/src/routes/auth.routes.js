@@ -211,4 +211,21 @@ router.post('/activate-identity', async (req, res, next) => {
   }
 });
 
+const { verifyToken } = require('../middleware/auth');
+const { Batch } = require('../models');
+
+router.get('/me', verifyToken, async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: ['id', 'name', 'email', 'role', 'account_status', 'is_active'],
+      include: [{ model: Batch, through: { attributes: [] } }]
+    });
+    
+    if (!user) return res.status(404).json({ success: false, message: 'Identity not found' });
+    res.json({ success: true, data: user });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

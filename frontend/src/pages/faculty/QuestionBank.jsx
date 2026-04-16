@@ -128,6 +128,25 @@ export default function QuestionBank() {
     }
   };
 
+  const toggleSectionAssignment = (id) => {
+    setAssignedSections(prev => 
+      prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]
+    );
+  };
+
+  const handleUpdateAuthorization = async () => {
+    if (!selectedExam) return;
+    try {
+      await api.post(`/exams/${selectedExam.id}/assign`, { 
+        assignedSections 
+      });
+      showToast("Security Clearance Parameters Updated.");
+      loadExam(selectedExam.id);
+    } catch (err) {
+      showToast("Authorization update failed.", "error");
+    }
+  };
+
   const toggleCorrectStatus = (index) => {
     if (qType === 'mcq' || qType === 'true_false') {
       setCorrectAnswers([index]);
@@ -377,7 +396,10 @@ export default function QuestionBank() {
                    </div>
 
                    <div className="pt-10 border-t border-white/5 flex justify-end">
-                      <button className="flex items-center gap-2 bg-white text-background font-black px-10 py-5 rounded-2xl hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase tracking-widest">
+                      <button 
+                        onClick={handleUpdateAuthorization}
+                        className="flex items-center gap-2 bg-white text-background font-black px-10 py-5 rounded-2xl hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase tracking-widest"
+                      >
                          <Send size={18} /> Update Authorization parameters
                       </button>
                    </div>

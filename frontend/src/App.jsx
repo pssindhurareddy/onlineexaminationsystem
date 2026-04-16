@@ -14,6 +14,7 @@ import AdminDashboard from './pages/admin/Dashboard';
 import FacultyDashboard from './pages/faculty/Dashboard';
 import QuestionBank from './pages/faculty/QuestionBank';
 import UsersRoster from './pages/admin/Users';
+import AcademicsManagement from './pages/admin/Academics';
 import StudentDashboard from './pages/student/Dashboard';
 import TakeExam from './pages/student/TakeExam';
 
@@ -51,7 +52,7 @@ function App() {
             <Route element={<DashboardLayout allowedRoles={['admin']} />}>
               <Route path="admin/dashboard" element={<AdminDashboard />} />
               <Route path="admin/users" element={<UsersRoster />} />
-              <Route path="admin/departments" element={<div className="p-8 text-center text-gray-500">Institutional Departments & Degrees Registry</div>} />
+              <Route path="admin/departments" element={<AcademicsManagement />} />
               <Route path="admin/settings" element={<div className="p-8 text-center text-gray-500">Global Institutional Settings</div>} />
             </Route>
 
@@ -63,12 +64,14 @@ function App() {
               <Route path="faculty/results" element={<div className="p-8 text-center text-gray-500">Evaluation Results</div>} />
             </Route>
 
-            {/* Student Portal */}
+            {/* Student Portal Dashboard */}
             <Route element={<DashboardLayout allowedRoles={['student']} />}>
               <Route path="student/dashboard" element={<StudentDashboard />} />
-              <Route path="student/take-exam/:id" element={<TakeExam />} />
               <Route path="student/history" element={<div className="p-8 text-center text-gray-500">Examination History</div>} />
             </Route>
+
+            {/* Standalone Secure Exam Window (Outside Layout) */}
+            <Route path="student/take-exam/:id" element={<TakeExam />} />
           </Route>
 
           {/* Fallback */}

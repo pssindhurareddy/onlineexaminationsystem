@@ -1,13 +1,19 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
-import { UserPlus, Power, Shield, User, Mail, Database, CheckCircle2, Copy, Users, ClipboardCheck, History, XCircle } from 'lucide-react';
+import { UserPlus, Power, Shield, User, Mail, Database, CheckCircle2, Copy, Users, ClipboardCheck, History, XCircle, GraduationCap, ChevronRight } from 'lucide-react';
 
 export default function UsersRoster() {
   const [activeTab, setActiveTab] = useState('registry'); // 'registry' or 'requests'
   const [users, setUsers] = useState([]);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [copyStatus, setCopyStatus] = useState(null); // ID of user copied
+  const [copyStatus, setCopyStatus] = useState(null);
+  
+  // Academic Context
+  const [availableBatches, setAvailableBatches] = useState([]);
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [enrollTarget, setEnrollTarget] = useState(null);
+  const [selectedBatchIds, setSelectedBatchIds] = useState([]);
   
   const [provisionMode, setProvisionMode] = useState('single'); 
   const [provisionData, setProvisionData] = useState({ name: '', email: '', role: 'student' });
@@ -16,6 +22,7 @@ export default function UsersRoster() {
 
   useEffect(() => {
     fetchData();
+    fetchAcademicStructure();
   }, [activeTab]);
 
   const fetchData = async () => {
@@ -25,13 +32,26 @@ export default function UsersRoster() {
         const res = await api.get('/admin/users');
         setUsers(res.data.data);
       } else {
-        const res = await api.get('/admin/requests/pending');
+        const res = await api.get('/admin/users/pending-requests');
         setRequests(res.data.data);
       }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAcademicStructure = async () => {
+    try {
+      const res = await api.get('/org/structure');
+      // Flatten structure for easy selection
+      const allBatches = res.data.data.flatMap(dept => 
+        (dept.Batches || []).map(b => ({ ...b, deptName: dept.name }))
+      );
+      setAvailableBatches(allBatches);
+    } catch (err) {
+      console.error("Failed to load academic map");
     }
   };
 
@@ -48,16 +68,13 @@ export default function UsersRoster() {
         });
       }
 
-      if (usersToProvision.length === 0) return alert("No valid identities detected in the buffer.");
-
       const res = await api.post('/admin/users/bulk', { users: usersToProvision, role: provisionData.role });
       setResults(res.data.data);
       fetchData();
-      
       setProvisionData({ name: '', email: '', role: 'student' });
       setBulkList('');
     } catch (err) {
-      alert(err.response?.data?.message || 'Provisioning sequence failed.');
+      alert(err.response?.data?.message || 'Provisioning failed.');
     }
   };
 
@@ -66,17 +83,31 @@ export default function UsersRoster() {
       await api.patch(`/admin/users/${id}/toggle`);
       fetchData();
     } catch (err) {
-      alert("Failed to update user status.");
+      alert("Status update failed.");
     }
   };
 
   const handleAuthorize = async (id) => {
     try {
-      await api.post(`/admin/requests/${id}/approve`);
-      alert("Identity Authorized. Genesis Key dispatched via secure email.");
+      await api.patch(`/admin/users/${id}/approve`);
+      alert("Identity Authorized.");
       fetchData();
     } catch (err) {
-      alert("Authorization protocol failed.");
+      alert("Authorization failed.");
+    }
+  };
+
+  const handleEnrollmentSync = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/admin/academics/sync-enrollments', { 
+        userId: enrollTarget.id, 
+        batchIds: selectedBatchIds 
+      });
+      setShowEnrollModal(false);
+      fetchData();
+    } catch (err) {
+      alert("Sync failed.");
     }
   };
 
@@ -91,20 +122,17 @@ export default function UsersRoster() {
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700 max-w-7xl mx-auto">
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-4xl font-bold font-heading text-white tracking-tight">Identity Management Console</h1>
-          <p className="text-gray-400 mt-2 text-lg">Provision institutional identities and authorize entry requests.</p>
+          <h1 className="text-4xl font-bold font-heading text-white tracking-tight">Identity Management</h1>
+          <p className="text-gray-400 mt-2 text-lg">Provision identities and manage academic enrollments.</p>
         </div>
       </div>
 
       {results && (
-        <div className="premium-card p-8 border border-success/20 bg-success/5 animate-in zoom-in-95">
+        <div className="premium-card p-8 border border-success/20 bg-success/5">
            <div className="flex items-center gap-4 mb-6">
               <CheckCircle2 className="text-success" size={32} />
-              <div>
-                 <h2 className="text-xl font-bold text-white">Provisioning Cycle Successful</h2>
-                 <p className="text-xs text-gray-500 font-medium tracking-wide">Distribute the following Genesis Keys or instruct members to check their email.</p>
-              </div>
-              <button onClick={() => setResults(null)} className="ml-auto text-[10px] font-bold text-gray-400 hover:text-white uppercase tracking-widest border border-white/5 px-4 py-2 rounded-lg transition-colors">Dismiss</button>
+              <h2 className="text-xl font-bold text-white">Provisioning Successful</h2>
+              <button onClick={() => setResults(null)} className="ml-auto text-[10px] font-bold text-gray-400">Dismiss</button>
            </div>
            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {results.map((r, i) => (
@@ -113,12 +141,7 @@ export default function UsersRoster() {
                       <p className="text-xs font-bold text-white truncate">{r.name}</p>
                       <p className="text-[10px] text-gray-600 truncate">{r.email}</p>
                    </div>
-                   <div className="flex items-center gap-2">
-                      <span className="bg-accent/10 border border-accent/20 text-accent font-black tracking-widest text-xs px-3 py-1.5 rounded-lg select-all">{r.genesisKey}</span>
-                      <button onClick={() => copyToClipboard(`res-${i}`, r.genesisKey)} className={`p-2 transition-colors ${copyStatus === `res-${i}` ? 'text-success' : 'text-gray-700 hover:text-accent'}`}>
-                         {copyStatus === `res-${i}` ? <ClipboardCheck size={14} /> : <Copy size={14} />}
-                      </button>
-                   </div>
+                   <span className="bg-accent/10 border border-accent/20 text-accent font-black tracking-widest text-xs px-3 py-1.5 rounded-lg">{r.genesisKey}</span>
                 </div>
               ))}
            </div>
@@ -128,216 +151,181 @@ export default function UsersRoster() {
       <div className="grid lg:grid-cols-12 gap-10">
         
         {/* Provisioning Control Panel */}
-        <div className="lg:col-span-4 h-fit premium-card p-8 border border-white/10 bg-black/40 shadow-2xl">
+        <div className="lg:col-span-4 h-fit premium-card p-8 border border-white/10 bg-black/40">
           <div className="flex gap-4 mb-8">
-             <button 
-               onClick={() => setProvisionMode('single')} 
-               className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all ${provisionMode === 'single' ? 'bg-accent/10 border-accent text-accent' : 'bg-white/10 border-white/5 text-gray-600 hover:bg-white/20'}`}
-             >
-                Single Entity
-             </button>
-             <button 
-               onClick={() => setProvisionMode('bulk')}
-               className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all ${provisionMode === 'bulk' ? 'bg-accent/10 border-accent text-accent' : 'bg-white/10 border-white/5 text-gray-600 hover:bg-white/20'}`}
-             >
-                Bulk Batch
-             </button>
+             {['single', 'bulk'].map(m => (
+               <button key={m} onClick={() => setProvisionMode(m)} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all ${provisionMode === m ? 'bg-accent/10 border-accent text-accent' : 'bg-white/10 border-white/5 text-gray-600'}`}>{m === 'single' ? 'Single Identity' : 'Bulk Batch'}</button>
+             ))}
           </div>
 
           <form onSubmit={handleHandleProvision} className="space-y-6">
             {provisionMode === 'single' ? (
-              <>
-                <div className="space-y-2">
-                  <label className="text-gray-500 text-[10px] font-bold uppercase tracking-widest px-1">Identity Name</label>
-                  <div className="relative">
-                     <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
-                     <input 
-                       required 
-                       className="w-full bg-[#050A15] border border-white/10 rounded-2xl p-4 pl-12 text-white text-sm focus:border-accent outline-none transition-all placeholder:text-gray-800" 
-                       placeholder="e.g. Alexander Wright" 
-                       value={provisionData.name} 
-                       onChange={e=>setProvisionData({...provisionData, name: e.target.value})} 
-                     />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-gray-500 text-[10px] font-bold uppercase tracking-widest px-1">Official Email</label>
-                  <div className="relative">
-                     <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
-                     <input 
-                       type="email" 
-                       required 
-                       className="w-full bg-[#050A15] border border-white/10 rounded-2xl p-4 pl-12 text-white text-sm focus:border-accent outline-none transition-all placeholder:text-gray-800" 
-                       placeholder="alex@institution.edu" 
-                       value={provisionData.email} 
-                       onChange={e=>setProvisionData({...provisionData, email: e.target.value})} 
-                     />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="space-y-2">
-                <label className="text-gray-500 text-[10px] font-bold uppercase tracking-widest px-1 flex justify-between">
-                   Identity Data Buffer
-                   <span className="text-accent underline font-black">Format: Name, Email</span>
-                </label>
-                <textarea 
-                  required 
-                  rows={8}
-                  className="w-full bg-[#050A15] border border-white/10 rounded-2xl p-4 text-white text-sm focus:border-accent outline-none transition-all placeholder:text-gray-800 font-mono"
-                  placeholder="John Doe, john@mit.edu&#10;Jane Smith, jane@mit.edu"
-                  value={bulkList}
-                  onChange={e => setBulkList(e.target.value)}
-                />
+              <div className="space-y-4">
+                <input required className="w-full bg-[#050A15] border border-white/10 rounded-2xl p-4 text-white text-sm" placeholder="Full Name" value={provisionData.name} onChange={e=>setProvisionData({...provisionData, name: e.target.value})} />
+                <input type="email" required className="w-full bg-[#050A15] border border-white/10 rounded-2xl p-4 text-white text-sm" placeholder="Email Address" value={provisionData.email} onChange={e=>setProvisionData({...provisionData, email: e.target.value})} />
               </div>
+            ) : (
+               <textarea required rows={8} className="w-full bg-[#050A15] border border-white/10 rounded-2xl p-4 text-white text-sm font-mono" placeholder="Name, Email (One per line)" value={bulkList} onChange={e => setBulkList(e.target.value)} />
             )}
 
-            <div className="space-y-2">
-              <label className="text-gray-500 text-[10px] font-bold uppercase tracking-widest px-1">Institutional Clearance Level</label>
-              <div className="relative">
-                 <Shield size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
-                 <select 
-                   className="w-full bg-[#050A15] border border-white/10 rounded-2xl p-4 pl-12 text-white text-sm focus:border-accent outline-none transition-all appearance-none cursor-pointer" 
-                   value={provisionData.role} 
-                   onChange={e=>setProvisionData({...provisionData, role: e.target.value})}
-                 >
-                   <option value="student">Student Learner</option>
-                   <option value="faculty">Faculty Instructor</option>
-                   <option value="admin">System Administrator</option>
-                 </select>
-              </div>
-            </div>
+            <select className="w-full bg-[#050A15] border border-white/10 rounded-2xl p-4 text-white text-sm" value={provisionData.role} onChange={e=>setProvisionData({...provisionData, role: e.target.value})}>
+               <option value="student">Student Learner</option>
+               <option value="faculty">Faculty Instructor</option>
+               <option value="admin">Administrator</option>
+            </select>
 
-            <button type="submit" className="w-full mt-6 bg-accent text-background font-black py-5 rounded-2xl shadow-xl shadow-accent/20 hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3">
-              <Database size={18} />
-              Provision Identities
-            </button>
+            <button type="submit" className="w-full mt-6 bg-accent text-background font-black py-5 rounded-2xl uppercase tracking-widest text-xs shadow-glow">Provision Identities</button>
           </form>
         </div>
 
-        {/* Identity Registry Main Section */}
-        <div className="lg:col-span-8 premium-card border border-white/10 bg-black/20 backdrop-blur-sm overflow-hidden flex flex-col shadow-2xl">
+        {/* Identity Registry */}
+        <div className="lg:col-span-8 premium-card border border-white/10 bg-black/20 overflow-hidden flex flex-col">
           <div className="p-8 border-b border-white/10 flex justify-between items-center bg-[#050A15]/40">
             <div className="flex gap-1 bg-black/40 p-1.5 rounded-2xl border border-white/5">
-                <button 
-                  onClick={() => setActiveTab('registry')}
-                  className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'registry' ? 'bg-accent text-background shadow-glow' : 'text-gray-600 hover:text-white'}`}
-                >
-                  <History size={14} /> Master Registry
-                </button>
-                <button 
-                  onClick={() => setActiveTab('requests')}
-                  className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'requests' ? 'bg-accent text-background shadow-glow' : 'text-gray-600 hover:text-white'}`}
-                >
-                  <UserPlus size={14} /> Authorization Requests {requests.length > 0 && <span className="bg-danger text-white px-1.5 rounded-md text-[8px]">{requests.length}</span>}
-                </button>
+                {['registry', 'requests'].map(t => (
+                  <button key={t} onClick={() => setActiveTab(t)} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === t ? 'bg-accent text-background shadow-glow' : 'text-gray-600'}`}>{t === 'registry' ? 'Master Registry' : 'Pending Approvals'}</button>
+                ))}
             </div>
           </div>
 
-          <div className="flex-1 overflow-x-auto custom-scrollbar">
+          <div className="flex-1 overflow-x-auto">
             {activeTab === 'registry' ? (
               <table className="w-full text-left">
                 <thead className="bg-[#050A15]/60 border-b border-white/5 text-gray-600 uppercase tracking-widest text-[9px]">
                   <tr>
                     <th className="px-8 py-5 font-black">Identity</th>
-                    <th className="px-8 py-5 font-black">Status & Protocol</th>
-                    <th className="px-8 py-5 font-black text-right">Access Controls</th>
+                    <th className="px-8 py-5 font-black">Academic Track</th>
+                    <th className="px-8 py-5 font-black text-right">Controls</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {(users || []).map(u => (
-                    <tr key={u.id} className="group hover:bg-white/[0.02] transition-colors">
-                      <td className="px-8 py-6">
+                  {users.map(u => (
+                    <tr key={u.id} className="group hover:bg-white/[0.02]">
+                      <td className="px-8 py-4">
                         <div className="flex items-center gap-4">
-                          <div className="w-11 h-11 rounded-2xl bg-white/5 flex items-center justify-center text-gray-500 group-hover:text-accent group-hover:bg-accent/10 group-hover:border-accent/20 border border-white/5 transition-all font-black text-sm">
-                             {u.name.charAt(0)}
-                          </div>
+                          <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center font-black text-xs text-gray-500 group-hover:text-accent transition-all">{u.name.charAt(0)}</div>
                           <div>
-                            <div className="font-bold text-gray-200 group-hover:text-white transition-colors">{u.name}</div>
-                            <div className="text-[11px] text-gray-600 font-medium">{u.email}</div>
+                            <div className="font-bold text-gray-200 group-hover:text-white">{u.name}</div>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-accent/60">{u.role}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="px-8 py-6">
-                         <div className="flex flex-col gap-2">
-                           <div className="flex items-center gap-2">
-                              <span className={`w-fit px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${u.role === 'admin' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : u.role === 'faculty' ? 'bg-accent/10 text-accent border-accent/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'}`}>
-                                {u.role}
-                              </span>
-                              {u.account_status === 'PENDING_ACTIVATION' && (
-                                <div className="flex items-center gap-2 ml-1">
-                                   <span className="w-fit px-2 py-0.5 rounded-md bg-warning/10 text-warning border border-warning/20 text-[8px] font-bold uppercase">Pending</span>
-                                   {u.genesis_key && (
-                                     <div className="flex items-center gap-2">
-                                       <span className="bg-accent/10 border border-accent/20 text-accent font-black tracking-widest text-[10px] px-2 py-1 rounded-md select-all shadow-glow-sm">
-                                          {u.genesis_key}
-                                       </span>
-                                       <button onClick={() => copyToClipboard(u.id, u.genesis_key)} className={`transition-colors ${copyStatus === u.id ? 'text-success' : 'text-gray-600 hover:text-accent'}`}>
-                                          {copyStatus === u.id ? <ClipboardCheck size={12} /> : <Copy size={12} />}
-                                       </button>
-                                     </div>
-                                   )}
-                                </div>
-                              )}
-                           </div>
-                           <div className={`flex items-center gap-1.5 ${u.is_active ? 'text-success' : 'text-danger'} text-[9px] font-bold uppercase tracking-widest`}>
-                              <div className={`w-1.5 h-1.5 rounded-full ${u.is_active ? 'bg-success shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-red-500'}`} />
-                              {u.is_active ? 'Authorized' : 'Suspended'}
-                           </div>
+                      <td className="px-8 py-4">
+                         <div className="flex flex-wrap gap-1">
+                            {u.Batches && u.Batches.length > 0 ? u.Batches.map(b => (
+                              <span key={b.id} className="px-2 py-0.5 rounded bg-white/5 border border-white/5 text-[8px] font-bold text-gray-500">{b.name}</span>
+                            )) : (
+                              <span className="text-[8px] font-black text-gray-700 uppercase tracking-tighter">No Active Trace</span>
+                            )}
                          </div>
                       </td>
-                      <td className="px-8 py-6 text-right">
-                         <button 
-                           onClick={() => handleToggle(u.id)} 
-                           className={`p-3 rounded-xl border transition-all ${u.is_active ? 'border-white/5 text-gray-500 hover:text-danger hover:bg-danger/10 hover:border-danger/20' : 'border-success/20 text-success bg-success/10 hover:opacity-80'}`}
-                         >
-                           <Power size={18} />
-                         </button>
+                      <td className="px-8 py-4 text-right">
+                         <div className="flex items-center justify-end gap-2">
+                           <button 
+                             onClick={() => { setEnrollTarget(u); setSelectedBatchIds((u.Batches || []).map(b => b.id)); setShowEnrollModal(true); }}
+                             className="p-2.5 rounded-xl bg-accent/5 border border-accent/10 text-accent hover:bg-accent hover:text-background transition-all"
+                             title="Manage academic links"
+                           >
+                             <GraduationCap size={16} />
+                           </button>
+                           <button onClick={() => handleToggle(u.id)} className={`p-2.5 rounded-xl border transition-all ${u.is_active ? 'border-white/5 text-gray-600 hover:text-danger' : 'border-success/20 text-success'}`}>
+                             <Power size={16} />
+                           </button>
+                         </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : (
-              <table className="w-full text-left">
-                <thead className="bg-[#050A15]/60 border-b border-white/5 text-gray-600 uppercase tracking-widest text-[9px]">
-                  <tr>
-                    <th className="px-8 py-5 font-black">Requested Identity</th>
-                    <th className="px-8 py-5 font-black">Role & Clearance</th>
-                    <th className="px-8 py-5 font-black text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {(requests || []).map(r => (
-                    <tr key={r.id} className="group hover:bg-white/[0.02] transition-colors">
-                      <td className="px-8 py-6">
-                         <div>
-                            <div className="font-bold text-gray-200">{r.name}</div>
-                            <div className="text-[11px] text-gray-600 font-medium">{r.email}</div>
-                         </div>
-                      </td>
-                      <td className="px-8 py-6">
-                         <span className={`w-fit px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border bg-accent/10 text-accent border-accent/20`}>
-                            {r.role}
-                         </span>
-                      </td>
-                      <td className="px-8 py-6 text-right space-x-3">
-                         <button onClick={() => handleAuthorize(r.id)} className="px-4 py-2 bg-success/10 border border-success/20 text-success text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-success hover:text-background transition-all">Authorize</button>
-                         <button className="px-4 py-2 bg-danger/10 border border-danger/20 text-danger text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-danger hover:text-white transition-all">Reject</button>
-                      </td>
+              requests.length > 0 ? (
+                <table className="w-full text-left">
+                  <thead className="bg-[#050A15]/60 border-b border-white/5 text-gray-600 uppercase tracking-widest text-[9px]">
+                    <tr>
+                      <th className="px-8 py-5 font-black">Identity Request</th>
+                      <th className="px-8 py-5 font-black">Requested Role</th>
+                      <th className="px-8 py-5 font-black text-right">Verification</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {requests.map(r => (
+                      <tr key={r.id} className="group hover:bg-white/[0.02]">
+                        <td className="px-8 py-4">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-accent/5 border border-accent/10 flex items-center justify-center font-black text-xs text-accent">{r.name.charAt(0)}</div>
+                            <div>
+                              <div className="font-bold text-gray-200 group-hover:text-white">{r.name}</div>
+                              <span className="text-[9px] font-bold text-gray-600">{r.email}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-8 py-4">
+                           <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest text-gray-500">{r.role}</span>
+                        </td>
+                        <td className="px-8 py-4 text-right">
+                           <button 
+                             onClick={() => handleAuthorize(r.id)}
+                             className="px-6 py-2.5 rounded-xl bg-success/10 border border-success/20 text-success text-[9px] font-black uppercase tracking-widest hover:bg-success hover:text-black transition-all shadow-glow-sm"
+                           >
+                             Authorize Identity
+                           </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="p-12 text-center text-gray-700 italic border-white/5 border border-dashed m-8 rounded-3xl">Subsystem queue currently clear.</div>
+              )
             )}
-            {loading && <div className="p-12 text-center text-gray-600 font-bold uppercase tracking-widest text-xs animate-pulse">Synchronizing Identity Registry...</div>}
-            {!loading && ((activeTab === 'registry' && users.length === 0) || (activeTab === 'requests' && requests.length === 0)) && (
-               <div className="p-12 text-center text-gray-700 italic border border-dashed border-white/5 m-8 rounded-3xl">Subsystem currently devoid of relevant identity data.</div>
-            )}
+            {loading && <div className="p-12 text-center text-gray-600 animate-pulse uppercase tracking-widest text-xs">Synchronizing Identity Web...</div>}
           </div>
         </div>
 
       </div>
+
+      {/* ENROLLMENT MODAL */}
+      {showEnrollModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
+           <div className="w-full max-w-lg premium-card p-8 border border-white/10 shadow-3xl bg-[#050A15]">
+              <div className="flex items-center gap-4 mb-8">
+                 <div className="p-3 rounded-2xl bg-accent/10 border border-accent/20 text-accent"><GraduationCap size={24} /></div>
+                 <div>
+                    <h2 className="text-xl font-bold text-white font-heading">Academic Synchronization</h2>
+                    <p className="text-xs text-gray-500">Mapping <strong>{enrollTarget?.name}</strong> to degree sections.</p>
+                 </div>
+              </div>
+              
+              <form onSubmit={handleEnrollmentSync} className="space-y-6">
+                 <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                    {availableBatches.map(batch => (
+                      <label key={batch.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer ${selectedBatchIds.includes(batch.id) ? 'bg-accent/10 border-accent/40 text-white' : 'bg-white/5 border-white/5 text-gray-500 hover:bg-white/10'}`}>
+                         <div>
+                            <p className="text-sm font-bold">{batch.name}</p>
+                            <p className="text-[9px] uppercase font-black opacity-60 tracking-widest">{batch.deptName}</p>
+                         </div>
+                         <input 
+                           type="checkbox" 
+                           className="w-5 h-5 rounded-lg accent-accent"
+                           checked={selectedBatchIds.includes(batch.id)}
+                           onChange={(e) => {
+                             if (e.target.checked) setSelectedBatchIds(prev => [...prev, batch.id]);
+                             else setSelectedBatchIds(prev => prev.filter(id => id !== batch.id));
+                           }}
+                         />
+                      </label>
+                    ))}
+                    {availableBatches.length === 0 && <p className="text-center py-8 text-gray-700 text-xs font-bold uppercase tracking-widest">No Batches Configured in Registry</p>}
+                 </div>
+
+                 <div className="flex gap-4 pt-4 border-t border-white/5">
+                    <button type="button" onClick={() => setShowEnrollModal(false)} className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white">Cancel</button>
+                    <button type="submit" className="flex-2 py-4 bg-accent text-background rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-glow">Apply Sync</button>
+                 </div>
+              </form>
+           </div>
+        </div>
+      )}
     </div>
   );
 }

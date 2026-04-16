@@ -117,3 +117,23 @@ exports.deleteQuestion = async (req, res, next) => {
     next(err);
   }
 };
+exports.assignExam = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { assignedSections } = req.body;
+    
+    const exam = await Exam.findOne({ 
+      where: { id, organization_id: req.user.organization_id } 
+    });
+
+    if (!exam) return res.status(404).json({ success: false, message: 'Exam not found' });
+
+    if (assignedSections && Array.isArray(assignedSections)) {
+      await exam.setAssignedSections(assignedSections);
+    }
+
+    res.json({ success: true, message: 'Institutional cohorts authorized for this protocol.' });
+  } catch (err) {
+    next(err);
+  }
+};

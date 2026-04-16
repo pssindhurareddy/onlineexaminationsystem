@@ -12,4 +12,9 @@ router.patch('/users/:id/approve', AdminController.approveRequest);
 router.patch('/users/:id/toggle', AdminController.toggleUserStatus);
 router.get('/stats', AdminController.getDashboardStats);
 
+// Academic Management
+const AcademicController = require('../controllers/academicController');
+router.post('/academics/enroll-bulk', AcademicController.bulkEnroll);
+router.post('/academics/sync-enrollments', AcademicController.syncUserBatches);
+
 module.exports = router;

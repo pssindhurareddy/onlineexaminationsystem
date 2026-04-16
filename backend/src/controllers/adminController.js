@@ -10,7 +10,8 @@ class AdminController {
           organization_id: req.user.organization_id,
           account_status: { [require('sequelize').Op.ne]: 'PENDING_APPROVAL' }
         },
-        attributes: ['id', 'name', 'email', 'role', 'is_active', 'account_status', 'genesis_key', 'created_at'] 
+        attributes: ['id', 'name', 'email', 'role', 'is_active', 'account_status', 'genesis_key', 'created_at'],
+        include: [{ model: Batch, through: { attributes: [] } }]
       });
       res.json({ success: true, data: users });
     } catch (err) {

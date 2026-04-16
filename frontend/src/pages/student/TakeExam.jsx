@@ -42,12 +42,31 @@ export default function TakeExam() {
     };
 
     const preventAction = (e) => e.preventDefault();
+    
+    const handleKeyDown = (e) => {
+      // Block F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+S
+      const forbiddenKeys = [
+          (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')),
+          (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j')),
+          (e.ctrlKey && (e.key === 'U' || e.key === 'u')),
+          (e.ctrlKey && (e.key === 'S' || e.key === 's')),
+          (e.ctrlKey && (e.key === 'P' || e.key === 'p')),
+          (e.key === 'F12')
+      ];
+
+      if (forbiddenKeys.some(condition => condition)) {
+        e.preventDefault();
+        setWarnings(w => w + 1);
+        newSocket.emit('security_violation', { type: 'forbidden_key', key: e.key });
+      }
+    };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('contextmenu', preventAction);
     document.addEventListener('copy', preventAction);
     document.addEventListener('paste', preventAction);
+    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
       newSocket.disconnect();
@@ -56,6 +75,7 @@ export default function TakeExam() {
       document.removeEventListener('contextmenu', preventAction);
       document.removeEventListener('copy', preventAction);
       document.removeEventListener('paste', preventAction);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [id]);
 
@@ -137,7 +157,15 @@ export default function TakeExam() {
   const currentQ = examState.exam.Questions[currentIndex];
 
   return (
-    <div ref={containerRef} className="flex-1 flex gap-8 w-full animate-in fade-in duration-500 p-8 max-w-7xl mx-auto bg-background min-h-screen">
+    <div ref={containerRef} className="flex-1 flex flex-col gap-8 w-full animate-in fade-in duration-500 p-8 max-w-7xl mx-auto bg-background min-h-screen relative">
+      <div className="absolute top-0 left-0 right-0 h-1 bg-accent/20 overflow-hidden z-[100]">
+         <div className="h-full bg-accent animate-shimmer" style={{ width: '30%' }} />
+      </div>
+      
+      <div className="flex items-center justify-center gap-2 py-1 bg-accent/10 border-b border-accent/20">
+         <Shield size={10} className="text-accent animate-pulse" />
+         <span className="text-[8px] font-black uppercase tracking-[0.3em] text-accent">Institutional Lockdown Active • Active Surveillance Enabled</span>
+      </div>
       
       <div className="flex-1 flex flex-col gap-6">
          <div className="flex justify-between items-center p-6 bg-white/5 border border-white/10 rounded-3xl">
