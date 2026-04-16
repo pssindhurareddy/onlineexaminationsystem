@@ -1,45 +1,19 @@
 const http = require('http');
+const app = require('./app');
+const setupSockets = require('./sockets/examSocket');
+const { connectRedis } = require('./config/redis');
 
-// THE ABSOLUTE TRUTH: Use the specific port from your Railway Screenshot
-const PORT = 4988; 
+const PORT = process.env.PORT || 8080;
 
-const server = http.createServer((req, res) => {
-  // LOG EVERY SINGLE HIT: This will show up in your Railway 'Logs' tab
-  console.log(`[TRAFFIC] Received ${req.method} for ${req.url}`);
+const server = http.createServer(app);
 
-  if (req.url === '/' || req.url === '/api/v1/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-    return res.end(JSON.stringify({ status: 'success', message: 'IDENTITY_HUB_ONLINE', target_port: PORT }));
-  }
+// Initialize Socket.io
+setupSockets(server);
 
-  if (realApp) return realApp(req, res);
-  
-  res.writeHead(503, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-  res.end(JSON.stringify({ status: 'starting', message: 'System warming up...' }));
+console.log(`[BOOT] Attempting bind on port: ${PORT}`);
+
+connectRedis().then(() => {
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`[BOOT] Server listening on 0.0.0.0:${PORT}`);
+  });
 });
-
-// Bind port UNCONDITIONALLY
-server.listen(PORT, () => {
-  console.log(`[BOOT] IDENTITY_HUB SUCCESS! Listening on Port ${PORT}`);
-});
-
-server.on('error', (err) => {
-  console.error('[CRITICAL] Port Binding Failed:', err);
-});
-
-// Load everything else AFTER the server is 100% up
-setTimeout(async () => {
-  try {
-    console.log(`[BOOT] Loading core system onto port ${PORT}...`);
-    const { connectDB } = require('./config/database');
-    const app = require('./app');
-    const initSocket = require('./sockets/examSocket');
-    
-    await connectDB();
-    initSocket(server);
-    realApp = app; 
-    console.log('[BOOT] Full Identity Hub ACTIVATED on Port 4988.');
-  } catch (err) {
-    console.error('[BOOT] Background load failed:', err.message);
-  }
-}, 3000);
