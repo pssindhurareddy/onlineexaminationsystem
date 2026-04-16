@@ -14,5 +14,6 @@ router.get('/:id', requireRole(['admin', 'faculty', 'student']), examController.
 router.post('/:id/assign', requireRole(['admin', 'faculty']), examController.assignExam);
 router.get('/:id/results', requireRole(['admin', 'faculty']), examController.getExamResults);
 router.get('/:id/export', requireRole(['admin', 'faculty']), examController.exportExamResults);
+router.patch('/attempts/:attemptId/answers/:answerId', requireRole(['admin', 'faculty']), examController.manualEvaluateAnswer);
 
 module.exports = router;

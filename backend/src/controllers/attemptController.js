@@ -2,7 +2,6 @@ const { Exam, Question, ExamAttempt, AttemptAnswer, Batch } = require('../models
 const EvaluationService = require('../services/evaluationService');
 
 class AttemptController {
-
   static async startAttempt(req, res, next) {
     try {
       const { id } = req.params;
@@ -112,6 +111,36 @@ class AttemptController {
 
       await attempt.increment('tab_switch_count');
       res.json({ success: true, tabSwitchCount: attempt.tab_switch_count + 1 });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async getMyAttempts(req, res, next) {
+    try {
+      const attempts = await ExamAttempt.findAll({
+        where: { user_id: req.user.id },
+        include: [{ model: Exam, attributes: ['id', 'title', 'subject', 'total_marks', 'pass_marks', 'show_result_immediately'] }],
+        order: [['submitted_at', 'DESC'], ['started_at', 'DESC']]
+      });
+
+      const data = attempts.map(a => ({
+        id: a.id,
+        examTitle: a.Exam?.title || '—',
+        examSubject: a.Exam?.subject || '—',
+        totalMarks: a.Exam?.total_marks ?? null,
+        passMarks: a.Exam?.pass_marks ?? null,
+        showResultImmediately: a.Exam?.show_result_immediately !== false,
+        score: a.total_score,
+        percentage: a.percentage,
+        passed: a.total_score !== null && a.Exam ? a.total_score >= a.Exam.pass_marks : null,
+        status: a.status,
+        startedAt: a.started_at,
+        submittedAt: a.submitted_at,
+        timeTakenSeconds: a.time_taken_seconds
+      }));
+
+      res.json({ success: true, data });
     } catch (err) {
       next(err);
     }
