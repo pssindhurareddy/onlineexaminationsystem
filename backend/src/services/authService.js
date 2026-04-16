@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const { Op } = require('sequelize');
 const { redisClient } = require('../config/redis');
 const { User, RefreshToken, OTP } = require('../models');
 
@@ -41,6 +42,39 @@ class AuthService {
 
   static async revokeAllTokens(userId) {
     await RefreshToken.update({ is_revoked: true }, { where: { user_id: userId } });
+  }
+
+  static async verifyRefreshToken(token) {
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || 'your_refresh_secret_min_32_chars_long_enough');
+    } catch (err) {
+      throw new Error('Invalid or expired refresh token');
+    }
+
+    const records = await RefreshToken.findAll({
+      where: {
+        user_id: decoded.id,
+        is_revoked: false,
+        expires_at: { [Op.gt]: new Date() }
+      }
+    });
+
+    let matchedRecord = null;
+    for (const record of records) {
+      const isMatch = await bcrypt.compare(token, record.token_hash);
+      if (isMatch) { matchedRecord = record; break; }
+    }
+
+    if (!matchedRecord) throw new Error('Refresh token revoked or not found');
+
+    // Rotate: revoke the used token
+    await matchedRecord.update({ is_revoked: true });
+
+    const user = await User.findByPk(decoded.id);
+    if (!user || !user.is_active) throw new Error('User not found or inactive');
+
+    return user;
   }
 
   static async generateOTP(userId, type) {

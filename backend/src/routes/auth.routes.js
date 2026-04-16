@@ -58,6 +58,28 @@ router.post('/login', loginLimiter, async (req, res, next) => {
   }
 });
 
+router.post('/refresh', async (req, res, next) => {
+  try {
+    const token = req.cookies?.refresh_token;
+    if (!token) return res.status(401).json({ success: false, message: 'No refresh token provided' });
+
+    const user = await AuthService.verifyRefreshToken(token);
+    const accessToken = AuthService.generateAccessToken(user);
+    const newRefreshToken = await AuthService.generateRefreshToken(user);
+
+    res.cookie('refresh_token', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 3600000
+    });
+
+    res.json({ success: true, data: { accessToken } });
+  } catch (err) {
+    res.status(401).json({ success: false, message: err.message || 'Token refresh failed' });
+  }
+});
+
 router.post('/forgot-password', async (req, res, next) => {
   try {
     const { email } = req.body;
