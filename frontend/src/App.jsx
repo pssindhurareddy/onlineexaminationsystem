@@ -18,6 +18,7 @@ import UsersRoster from './pages/admin/Users';
 import AcademicsManagement from './pages/admin/Academics';
 import StudentDashboard from './pages/student/Dashboard';
 import TakeExam from './pages/student/TakeExam';
+import ExamHistory from './pages/student/History';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ShieldCheck, BookOpen, GraduationCap } from 'lucide-react';
@@ -69,7 +70,7 @@ function App() {
             {/* Student Portal Dashboard */}
             <Route element={<DashboardLayout allowedRoles={['student']} />}>
               <Route path="student/dashboard" element={<StudentDashboard />} />
-              <Route path="student/history" element={<div className="p-8 text-center text-gray-500">Examination History</div>} />
+              <Route path="student/history" element={<ExamHistory />} />
             </Route>
 
             {/* Standalone Secure Exam Window (Outside Layout) */}

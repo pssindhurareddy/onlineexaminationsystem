@@ -248,7 +248,24 @@ export default function TakeExam() {
   }
 
   // ── SUBMITTED ────────────────────────────────────────────────────────────────
-  if (phase === 'submitted' && result) {
+  if (phase === 'submitted') {
+    const showResult = examState?.exam?.show_result_immediately !== false;
+    if (!showResult || !result) {
+      return (
+        <div className="h-screen flex flex-col items-center justify-center p-6 bg-background">
+          <div className="premium-card p-12 text-center max-w-lg w-full border border-white/5">
+            <div className="w-28 h-28 mx-auto rounded-full flex items-center justify-center mb-8 shadow-2xl bg-accent/20 text-accent">
+              <CheckCircle size={56} />
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-3">Submission Recorded</h2>
+            <p className="text-gray-400 mb-8 leading-relaxed">Your answers have been saved successfully. Results will be published by your instructor once evaluation is complete.</p>
+            <button onClick={() => navigate(`/org/${orgSlug}/student/dashboard`)} className="w-full py-4 bg-accent text-background font-black rounded-2xl transition-all hover:opacity-90 active:scale-95 shadow-lg uppercase tracking-widest text-xs">
+              Return to Dashboard
+            </button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="h-screen flex flex-col items-center justify-center p-6 bg-background">
         <div className="premium-card p-12 text-center max-w-lg w-full border border-white/5">

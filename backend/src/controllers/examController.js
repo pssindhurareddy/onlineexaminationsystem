@@ -161,7 +161,7 @@ exports.getExamResults = async (req, res, next) => {
       where: { exam_id: id },
       include: [
         { model: User, attributes: ['id', 'name', 'email'] },
-        { model: AttemptAnswer, include: [{ model: Question, attributes: ['id', 'text', 'type', 'correct_answer', 'marks'] }] }
+        { model: AttemptAnswer, include: [{ model: Question, attributes: ['id', 'text', 'type', 'correct_answer', 'marks', 'options'] }] }
       ],
       order: [['submitted_at', 'DESC']]
     });
@@ -272,140 +272,42 @@ exports.assignExam = async (req, res, next) => {
   }
 };
 
-exports.createExam = async (req, res, next) => {
+exports.manualEvaluateAnswer = async (req, res, next) => {
   try {
-    const { title, subject, instructions, total_marks, pass_marks, duration_minutes, settings, assignedSections } = req.body;
-    
-    const exam = await Exam.create({
-      title,
-      subject,
-      instructions,
-      total_marks: total_marks || 100,
-      pass_marks: pass_marks || 40,
-      duration_minutes: duration_minutes || 60,
-      status: 'draft',
-      created_by: req.user.id,
-      organization_id: req.user.organization_id,
-      ...(settings || {})
-    });
+    const { attemptId, answerId } = req.params;
+    const { marks_awarded, evaluator_comment } = req.body;
 
-    if (assignedSections && Array.isArray(assignedSections)) {
-      await exam.setAssignedSections(assignedSections);
+    const answer = await AttemptAnswer.findOne({ where: { id: answerId, attempt_id: attemptId } });
+    if (!answer) return res.status(404).json({ success: false, message: 'Answer record not found' });
+
+    const attempt = await ExamAttempt.findByPk(attemptId);
+    if (!attempt) return res.status(404).json({ success: false, message: 'Attempt not found' });
+
+    // Verify faculty owns the exam
+    const exam = await Exam.findOne({ where: { id: attempt.exam_id, organization_id: req.user.organization_id } });
+    if (!exam) return res.status(403).json({ success: false, message: 'Unauthorized' });
+    if (req.user.role === 'faculty' && exam.created_by !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    res.status(201).json({ success: true, data: exam });
-  } catch (error) {
-    next(error);
-  }
-};
-
-exports.addQuestionToExam = async (req, res, next) => {
-  try {
-    const { examId } = req.params;
-    const { text, type, options, correct_answer, marks, subject, explanation } = req.body;
-
-    const question = await Question.create({
-      text,
-      type,
-      options,
-      correct_answer,
-      marks,
-      subject,
-      explanation,
-      created_by: req.user.id,
-      organization_id: req.user.organization_id
+    const oldMarks = answer.marks_awarded || 0;
+    await answer.update({
+      marks_awarded: Number(marks_awarded),
+      evaluator_comment: evaluator_comment || null,
+      manually_evaluated: true,
+      is_correct: Number(marks_awarded) > 0
     });
 
-    await ExamQuestion.create({
-      exam_id: examId,
-      question_id: question.id,
-      order_index: req.body.order_index || 1
-    });
+    // Recalculate attempt total score
+    const allAnswers = await AttemptAnswer.findAll({ where: { attempt_id: attemptId } });
+    const newTotal = Math.max(0, allAnswers.reduce((sum, a) => sum + (a.marks_awarded || 0), 0));
+    const percentage = exam.total_marks > 0 ? parseFloat(((newTotal / exam.total_marks) * 100).toFixed(2)) : 0;
+    await attempt.update({ total_score: newTotal, percentage });
 
-    res.status(201).json({ success: true, data: question });
-  } catch (error) {
-    next(error);
-  }
-};
-
-exports.getExamsList = async (req, res, next) => {
-  try {
-    const where = { organization_id: req.user.organization_id };
-    
-    if (req.user.role === 'faculty') {
-      where.created_by = req.user.id;
-    }
-
-    let include = [];
-    if (req.user.role === 'student') {
-      // Find sections the student belongs to
-      const user = await User.findByPk(req.user.id, { include: [Batch] });
-      const sectionIds = user.Batches.map(b => b.id);
-      
-      include.push({
-        model: Batch,
-        as: 'AssignedSections',
-        where: { id: sectionIds },
-        required: true // Only return exams assigned to these sections
-      });
-    }
-
-    const exams = await Exam.findAll({ where, include, order: [['created_at', 'DESC']] });
-    res.json({ success: true, data: exams });
-  } catch (error) {
-    next(error);
-  }
-};
-
-exports.getExamDetails = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const exam = await Exam.findOne({ 
-      where: { id, organization_id: req.user.organization_id }, 
-      include: [Question] 
-    });
-    if (!exam) return res.status(404).json({ success: false, message: 'Examination not found' });
-    res.json({ success: true, data: exam });
+    res.json({ success: true, data: { marks_awarded: Number(marks_awarded), newTotal, percentage } });
   } catch (err) {
     next(err);
   }
 };
 
-exports.deleteQuestion = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const question = await Question.findOne({ 
-      where: { id, organization_id: req.user.organization_id } 
-    });
 
-    if (!question) return res.status(404).json({ success: false, message: 'Question not found' });
-    
-    // Revoke from all exams first (cascading cleanup)
-    await ExamQuestion.destroy({ where: { question_id: id } });
-    await question.destroy();
-
-    res.json({ success: true, message: 'Question revoked from institutional registry.' });
-  } catch (err) {
-    next(err);
-  }
-};
-exports.assignExam = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { assignedSections } = req.body;
-    
-    const exam = await Exam.findOne({ 
-      where: { id, organization_id: req.user.organization_id } 
-    });
-
-    if (!exam) return res.status(404).json({ success: false, message: 'Exam not found' });
-
-    if (assignedSections && Array.isArray(assignedSections)) {
-      await exam.setAssignedSections(assignedSections);
-    }
-
-    res.json({ success: true, message: 'Institutional cohorts authorized for this protocol.' });
-  } catch (err) {
-    next(err);
-  }
-};

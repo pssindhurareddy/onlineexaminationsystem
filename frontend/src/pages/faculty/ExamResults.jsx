@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   BarChart3, Clock, User, Download, ChevronLeft, AlertTriangle, CheckCircle,
-  XCircle, Eye, Activity, TrendingUp, Award
+  XCircle, Eye, Activity, TrendingUp, Award, Edit3, Save, X as XIcon
 } from 'lucide-react';
 
 export default function ExamResults() {
@@ -14,6 +16,12 @@ export default function ExamResults() {
   const [loading, setLoading] = useState(true);
   const [selectedAttempt, setSelectedAttempt] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
+
+  // Manual evaluation state
+  const [editingAnswerId, setEditingAnswerId] = useState(null);
+  const [editMarks, setEditMarks] = useState('');
+  const [editComment, setEditComment] = useState('');
+  const [savingEval, setSavingEval] = useState(false);
 
   useEffect(() => {
     if (!examId) return;
@@ -32,7 +40,7 @@ export default function ExamResults() {
     }
   };
 
-  const handleExport = async () => {
+  const handleExportCSV = async () => {
     try {
       const res = await api.get(`/exams/${examId}/export`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([res.data]));
@@ -45,6 +53,91 @@ export default function ExamResults() {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       alert('Export failed. Please try again.');
+    }
+  };
+
+  const handleExportPDF = () => {
+    if (!data) return;
+    const { exam, attempts } = data;
+    const doc = new jsPDF({ orientation: 'landscape' });
+
+    doc.setFontSize(18);
+    doc.text(`Exam Results: ${exam.title}`, 14, 18);
+    doc.setFontSize(11);
+    doc.text(`Subject: ${exam.subject}  |  Total Marks: ${exam.total_marks}  |  Pass Marks: ${exam.pass_marks}`, 14, 26);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 33);
+
+    const rows = attempts.map(a => [
+      a.User?.name || '—',
+      a.User?.email || '—',
+      a.total_score != null ? `${a.total_score}/${exam.total_marks}` : '—',
+      a.percentage != null ? `${a.percentage}%` : '—',
+      a.total_score != null ? (a.total_score >= exam.pass_marks ? 'Pass' : 'Fail') : '—',
+      a.status,
+      a.time_taken_seconds ? `${Math.floor(a.time_taken_seconds / 60)}m ${a.time_taken_seconds % 60}s` : '—',
+      a.tab_switch_count ?? 0,
+      a.started_at ? new Date(a.started_at).toLocaleString() : '—'
+    ]);
+
+    autoTable(doc, {
+      startY: 38,
+      head: [['Student', 'Email', 'Score', '%', 'Result', 'Status', 'Time', 'Tab Switches', 'Started At']],
+      body: rows,
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [0, 194, 255], textColor: 0, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [240, 248, 255] }
+    });
+
+    doc.save(`exam_results_${examId}.pdf`);
+  };
+
+  const startEditAnswer = (ans) => {
+    setEditingAnswerId(ans.id);
+    setEditMarks(ans.marks_awarded != null ? String(ans.marks_awarded) : '0');
+    setEditComment(ans.evaluator_comment || '');
+  };
+
+  const cancelEdit = () => {
+    setEditingAnswerId(null);
+    setEditMarks('');
+    setEditComment('');
+  };
+
+  const saveManualEval = async (attemptId, answerId, questionMaxMarks) => {
+    const marksNum = parseFloat(editMarks);
+    if (isNaN(marksNum) || marksNum < 0 || marksNum > questionMaxMarks) {
+      alert(`Marks must be between 0 and ${questionMaxMarks}.`);
+      return;
+    }
+    setSavingEval(true);
+    try {
+      const res = await api.patch(`/exams/attempts/${attemptId}/answers/${answerId}`, {
+        marks_awarded: marksNum,
+        evaluator_comment: editComment
+      });
+      // Update local state so the modal reflects the new value without a full refetch
+      setSelectedAttempt(prev => {
+        const newAnswers = prev.AttemptAnswers.map(a =>
+          a.id === answerId
+            ? { ...a, marks_awarded: marksNum, evaluator_comment: editComment, manually_evaluated: true, is_correct: marksNum > 0 }
+            : a
+        );
+        return { ...prev, AttemptAnswers: newAnswers, total_score: res.data.data.newTotal, percentage: res.data.data.percentage };
+      });
+      // Also refresh the main data table row
+      setData(prev => ({
+        ...prev,
+        attempts: prev.attempts.map(a =>
+          a.id === attemptId
+            ? { ...a, total_score: res.data.data.newTotal, percentage: res.data.data.percentage }
+            : a
+        )
+      }));
+      cancelEdit();
+    } catch (err) {
+      alert('Failed to save evaluation.');
+    } finally {
+      setSavingEval(false);
     }
   };
 
@@ -90,9 +183,14 @@ export default function ExamResults() {
             <p className="text-gray-500 text-sm mt-1">{exam.subject} • Exam Results & Analytics</p>
           </div>
         </div>
-        <button onClick={handleExport} className="flex items-center gap-2 px-6 py-3 bg-accent text-background font-black rounded-2xl text-xs uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all">
-          <Download size={16} /> Export CSV
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={handleExportCSV} className="flex items-center gap-2 px-6 py-3 bg-white/10 text-white font-black rounded-2xl text-xs uppercase tracking-widest hover:bg-white/20 active:scale-95 transition-all border border-white/10">
+            <Download size={16} /> CSV
+          </button>
+          <button onClick={handleExportPDF} className="flex items-center gap-2 px-6 py-3 bg-accent text-background font-black rounded-2xl text-xs uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all">
+            <Download size={16} /> PDF
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -213,42 +311,98 @@ export default function ExamResults() {
                     <AlertTriangle size={12} /> {selectedAttempt.tab_switch_count} tab switches
                   </span>
                 )}
-                <button onClick={() => setSelectedAttempt(null)} className="p-2 rounded-xl border border-white/10 text-gray-400 hover:text-white transition-all">✕</button>
+                <button onClick={() => { setSelectedAttempt(null); cancelEdit(); }} className="p-2 rounded-xl border border-white/10 text-gray-400 hover:text-white transition-all">✕</button>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-              {selectedAttempt.AttemptAnswers?.map((ans, i) => (
-                <div key={ans.id} className={`p-5 rounded-2xl border ${ans.is_correct ? 'border-green-500/20 bg-green-500/5' : 'border-red-500/20 bg-red-500/5'}`}>
-                  <div className="flex items-start justify-between mb-3">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Q{i + 1}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-gray-500">{ans.marks_awarded !== null ? `${ans.marks_awarded > 0 ? '+' : ''}${ans.marks_awarded}` : '—'} pts</span>
-                      {ans.is_correct ? <CheckCircle size={14} className="text-green-400" /> : <XCircle size={14} className="text-red-400" />}
+              {selectedAttempt.AttemptAnswers?.map((ans, i) => {
+                const isDescriptive = ans.Question?.type === 'word' || ans.Question?.type === 'fill_blank';
+                const isEditing = editingAnswerId === ans.id;
+                return (
+                  <div key={ans.id} className={`p-5 rounded-2xl border ${ans.is_correct ? 'border-green-500/20 bg-green-500/5' : 'border-red-500/20 bg-red-500/5'}`}>
+                    <div className="flex items-start justify-between mb-3">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Q{i + 1}</span>
+                      <div className="flex items-center gap-2">
+                        {ans.manually_evaluated && (
+                          <span className="text-[9px] font-black uppercase tracking-widest text-purple-400 border border-purple-500/20 bg-purple-500/10 px-2 py-0.5 rounded-full">Manual</span>
+                        )}
+                        <span className="text-xs font-bold text-gray-500">{ans.marks_awarded !== null ? `${ans.marks_awarded > 0 ? '+' : ''}${ans.marks_awarded}` : '—'} pts</span>
+                        {ans.is_correct ? <CheckCircle size={14} className="text-green-400" /> : <XCircle size={14} className="text-red-400" />}
+                        {isDescriptive && !isEditing && (
+                          <button onClick={() => startEditAnswer(ans)} className="p-1.5 rounded-lg border border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition-all" title="Override marks">
+                            <Edit3 size={12} />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-white text-sm font-medium mb-2">{ans.Question?.text}</p>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="text-gray-500">Student answered:</span>
-                    <span className={`font-bold ${ans.is_correct ? 'text-green-400' : 'text-red-400'}`}>
-                      {Array.isArray(ans.selected_answer) ? ans.selected_answer.map(a => {
-                        if (ans.Question?.options && ans.Question.options[a] !== undefined) return ans.Question.options[a];
-                        return String(a);
-                      }).join(', ') : '—'}
-                    </span>
-                  </div>
-                  {!ans.is_correct && ans.Question?.correct_answer && (
-                    <div className="flex items-center gap-2 text-xs mt-1">
-                      <span className="text-gray-500">Correct answer:</span>
-                      <span className="font-bold text-green-400">
-                        {Array.isArray(ans.Question.correct_answer) ? ans.Question.correct_answer.map(a => {
+                    <p className="text-white text-sm font-medium mb-2">{ans.Question?.text}</p>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-gray-500">Student answered:</span>
+                      <span className={`font-bold ${ans.is_correct ? 'text-green-400' : 'text-red-400'}`}>
+                        {Array.isArray(ans.selected_answer) ? ans.selected_answer.map(a => {
                           if (ans.Question?.options && ans.Question.options[a] !== undefined) return ans.Question.options[a];
                           return String(a);
-                        }).join(', ') : String(ans.Question.correct_answer)}
+                        }).join(', ') : '—'}
                       </span>
                     </div>
-                  )}
-                </div>
-              ))}
+                    {!ans.is_correct && ans.Question?.correct_answer && !isDescriptive && (
+                      <div className="flex items-center gap-2 text-xs mt-1">
+                        <span className="text-gray-500">Correct answer:</span>
+                        <span className="font-bold text-green-400">
+                          {Array.isArray(ans.Question.correct_answer) ? ans.Question.correct_answer.map(a => {
+                            if (ans.Question?.options && ans.Question.options[a] !== undefined) return ans.Question.options[a];
+                            return String(a);
+                          }).join(', ') : String(ans.Question.correct_answer)}
+                        </span>
+                      </div>
+                    )}
+                    {ans.evaluator_comment && !isEditing && (
+                      <p className="mt-2 text-xs text-purple-300 italic">Evaluator note: {ans.evaluator_comment}</p>
+                    )}
+                    {isDescriptive && isEditing && (
+                      <div className="mt-4 p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl space-y-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-purple-400">Manual Evaluation</p>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 space-y-1">
+                            <label className="text-[9px] text-gray-500 uppercase tracking-widest font-bold">Marks (0–{ans.Question?.marks ?? '?'})</label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={ans.Question?.marks ?? undefined}
+                              step={0.5}
+                              value={editMarks}
+                              onChange={e => setEditMarks(e.target.value)}
+                              className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2 text-white text-sm focus:border-purple-400 outline-none"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] text-gray-500 uppercase tracking-widest font-bold">Evaluator Comment (optional)</label>
+                          <input
+                            type="text"
+                            value={editComment}
+                            onChange={e => setEditComment(e.target.value)}
+                            placeholder="e.g. Partial credit for correct reasoning..."
+                            className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2 text-white text-sm focus:border-purple-400 outline-none"
+                          />
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <button onClick={cancelEdit} className="flex items-center gap-1 px-4 py-2 rounded-xl border border-white/10 text-gray-400 hover:text-white transition-all text-xs font-bold">
+                            <XIcon size={12} /> Cancel
+                          </button>
+                          <button
+                            disabled={savingEval}
+                            onClick={() => saveManualEval(selectedAttempt.id, ans.id, ans.Question?.marks ?? Infinity)}
+                            className="flex items-center gap-1 px-5 py-2 rounded-xl bg-purple-500 text-white text-xs font-black uppercase tracking-widest hover:bg-purple-400 transition-all disabled:opacity-60"
+                          >
+                            <Save size={12} /> {savingEval ? 'Saving…' : 'Save'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               {(!selectedAttempt.AttemptAnswers || selectedAttempt.AttemptAnswers.length === 0) && (
                 <p className="text-center text-gray-600 py-10">No answer data available.</p>
               )}
