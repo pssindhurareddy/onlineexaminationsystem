@@ -33,9 +33,14 @@ class AuthService {
   }
 
   static async verifyAccessToken(token) {
-    // Check blacklist in Redis
-    const isBlacklisted = await redisClient.get(`bl_${token}`);
-    if (isBlacklisted) throw new Error('Token revoked');
+    // Check blacklist in Redis (fail safe — if Redis is unavailable, skip the check)
+    try {
+      const isBlacklisted = await redisClient.get(`bl_${token}`);
+      if (isBlacklisted) throw new Error('Token revoked');
+    } catch (redisErr) {
+      if (redisErr.message === 'Token revoked') throw redisErr;
+      console.warn('[AUTH] Redis unavailable for blacklist check, proceeding without it:', redisErr.message);
+    }
 
     return jwt.verify(token, process.env.JWT_ACCESS_SECRET || 'your_access_secret_min_32_chars_long_enough');
   }
