@@ -16,6 +16,7 @@ export default function QuestionBank() {
   // Metadata
   const [courses, setCourses] = useState([]);
   const [sections, setSections] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState(null);
 
   // New Exam Form State
   const [newExamData, setNewExamData] = useState({ title: '', subject: '', duration: 60 });
@@ -425,22 +426,30 @@ export default function QuestionBank() {
                       <div className="grid md:grid-cols-2 gap-8 mt-10">
                          <div className="space-y-4 text-left">
                             <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Degree Pathways</label>
+                            <p className="text-[10px] text-gray-600">Click to filter cohorts</p>
                             <div className="space-y-2">
-                               {courses.map(c => (
-                                 <div key={c.id} className="p-4 rounded-xl border border-white/5 bg-black/20 flex justify-between items-center group hover:border-white/20 transition-all">
+                               {courses.map(c => {
+                                 const isActive = selectedCourseId === c.id;
+                                 return (
+                                 <div key={c.id}
+                                   onClick={() => setSelectedCourseId(isActive ? null : c.id)}
+                                   className={`p-4 rounded-xl border cursor-pointer flex justify-between items-center transition-all ${isActive ? 'border-accent bg-accent/5' : 'border-white/5 bg-black/20 hover:border-white/20'}`}>
                                     <div>
-                                       <div className="font-bold text-gray-300 group-hover:text-white">{c.name}</div>
+                                       <div className={`font-bold ${isActive ? 'text-accent' : 'text-gray-300'}`}>{c.name}</div>
                                        <div className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">{c.code}</div>
                                     </div>
+                                    {isActive && <CheckCircle2 size={16} className="text-accent" />}
                                  </div>
-                               ))}
+                                 );
+                               })}
                             </div>
                          </div>
 
                          <div className="space-y-4 text-left">
                             <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Cohort Access</label>
+                            <p className="text-[10px] text-gray-600">{selectedCourseId ? `Showing cohorts for selected pathway` : 'All cohorts'}</p>
                             <div className="space-y-2">
-                               {sections.map(s => {
+                               {sections.filter(s => !selectedCourseId || s.department_id === selectedCourseId).map(s => {
                                  const isActive = assignedSections.includes(s.id);
                                  return (
                                    <div key={s.id} 

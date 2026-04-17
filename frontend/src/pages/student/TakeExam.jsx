@@ -51,8 +51,9 @@ export default function TakeExam() {
     };
 
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-      if (!document.fullscreenElement) {
+      const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
+      setIsFullscreen(isFs);
+      if (!isFs && phase === 'exam') {
         warningsRef.current += 1;
         setWarnings(warningsRef.current);
         newSocket.emit('security_violation', { type: 'fullscreen_exit', examId: id });
@@ -80,6 +81,8 @@ export default function TakeExam() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
     document.addEventListener('contextmenu', preventAction);
     document.addEventListener('copy', preventAction);
     document.addEventListener('paste', preventAction);
@@ -89,6 +92,8 @@ export default function TakeExam() {
       newSocket.disconnect();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
       document.removeEventListener('contextmenu', preventAction);
       document.removeEventListener('copy', preventAction);
       document.removeEventListener('paste', preventAction);
@@ -187,7 +192,12 @@ export default function TakeExam() {
   };
 
   const enterFullscreen = () => {
-    if (containerRef.current?.requestFullscreen) containerRef.current.requestFullscreen();
+    const el = document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+    // Optimistically mark as fullscreen — the event will correct if it fails
+    setIsFullscreen(true);
   };
 
   const handleSelectOption = (qId, optionIndex) => {

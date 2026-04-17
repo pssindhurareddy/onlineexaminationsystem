@@ -61,10 +61,10 @@ function App() {
             {/* Faculty Portal */}
             <Route element={<DashboardLayout allowedRoles={['faculty', 'admin']} />}>
               <Route path="faculty/dashboard" element={<FacultyDashboard />} />
-              <Route path="faculty/exams" element={<Navigate to="question-bank" replace />} />
+              <Route path="faculty/exams" element={<QuestionBank />} />
               <Route path="faculty/question-bank" element={<QuestionBank />} />
               <Route path="faculty/exams/:examId/results" element={<ExamResults />} />
-              <Route path="faculty/results" element={<Navigate to="question-bank" replace />} />
+              <Route path="faculty/results" element={<QuestionBank />} />
             </Route>
 
             {/* Student Portal Dashboard */}
