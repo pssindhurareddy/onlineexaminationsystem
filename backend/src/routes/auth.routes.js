@@ -50,9 +50,9 @@ router.post('/login', loginLimiter, async (req, res, next) => {
     const accessToken = AuthService.generateAccessToken(user);
     const refreshToken = await AuthService.generateRefreshToken(user);
 
-    res.cookie('refresh_token', refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 7 * 24 * 3600000 });
+    res.cookie('refresh_token', refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict', maxAge: 7 * 24 * 3600000 });
     
-    res.json({ success: true, data: { user: { id: user.id, name: user.name, role: user.role }, accessToken } });
+    res.json({ success: true, data: { user: { id: user.id, name: user.name, role: user.role, organization_id: user.organization_id }, accessToken } });
   } catch (err) {
     next(err);
   }
@@ -70,7 +70,7 @@ router.post('/refresh', async (req, res, next) => {
     res.cookie('refresh_token', newRefreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
       maxAge: 7 * 24 * 3600000
     });
 

@@ -74,7 +74,10 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         localStorage.clear();
-        window.location.href = '/';
+        // Redirect to the org-scoped login page, preserving orgSlug from the current URL
+        const match = window.location.pathname.match(/^\/org\/([^\/]+)/);
+        const orgSlug = match ? match[1] : null;
+        window.location.href = orgSlug ? `/org/${orgSlug}/login` : '/';
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
