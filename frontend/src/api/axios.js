@@ -79,8 +79,10 @@ api.interceptors.response.use(
       } catch (refreshErr) {
         processQueue(refreshErr, null);
         localStorage.removeItem('token');
-        // Redirect to root so React Router shows the login page
-        window.location.href = '/';
+        localStorage.removeItem('user');
+        // Redirect to the org-specific login page; fall back to landing only if orgSlug can't be determined
+        const pathMatch = window.location.pathname.match(/^\/org\/([^/]+)/);
+        window.location.href = pathMatch ? `/org/${pathMatch[1]}/login` : '/';
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;

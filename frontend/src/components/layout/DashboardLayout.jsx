@@ -11,7 +11,14 @@ export default function DashboardLayout({ allowedRoles }) {
     return <Navigate to={`/org/${orgSlug}/login`} replace />;
   }
 
-  const user = JSON.parse(userStr);
+  let user;
+  try {
+    user = JSON.parse(userStr);
+  } catch {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    return <Navigate to={`/org/${orgSlug}/login`} replace />;
+  }
 
   if (!allowedRoles.includes(user.role)) {
     return <Navigate to={`/org/${orgSlug}/${user.role}/dashboard`} replace />;
