@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { useNavigate, useParams } from 'react-router-dom';
-import { BookOpen, PlusCircle, BarChart3, Users, ChevronRight, Activity, Clock, Layers, Star, Info } from 'lucide-react';
+import { BookOpen, PlusCircle, BarChart3, Users, ChevronRight, Activity, Clock, Layers, Star, Info, CheckCircle } from 'lucide-react';
 
 export default function FacultyDashboard() {
   const { orgSlug } = useParams();
