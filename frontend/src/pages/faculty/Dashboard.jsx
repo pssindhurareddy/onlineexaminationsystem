@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { useNavigate, useParams } from 'react-router-dom';
-import { BookOpen, PlusCircle, BarChart3, Users, ChevronRight, Activity, Clock, Layers, Star, Info } from 'lucide-react';
+import { BookOpen, PlusCircle, BarChart3, Users, ChevronRight, Activity, Clock, Layers, Star, Info, CheckCircle } from 'lucide-react';
 
 export default function FacultyDashboard() {
   const { orgSlug } = useParams();
@@ -148,7 +148,7 @@ export default function FacultyDashboard() {
                              </div>
                           </div>
                        </div>
-                       <button className="relative z-10 text-[10px] font-black uppercase tracking-widest text-accent border border-accent/20 px-4 py-2 rounded-xl hover:bg-accent hover:text-background transition-all">Analyze Results</button>
+                       <button onClick={() => navigate(`/org/${orgSlug}/faculty/exams/${exam.id}/results`)} className="relative z-10 text-[10px] font-black uppercase tracking-widest text-accent border border-accent/20 px-4 py-2 rounded-xl hover:bg-accent hover:text-background transition-all">Analyze Results</button>
                     </div>
                   ))}
                   {exams.length === 0 && <div className="py-20 text-center text-gray-600 italic border border-dashed border-white/10 rounded-3xl">No examinations deployed under this identity.</div>}

@@ -4,6 +4,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { BookOpen, Clock, Target, Layers, CheckCircle, Info, X } from 'lucide-react';
 
 export default function StudentDashboard() {
+  const { orgSlug } = useParams();
+  const navigate = useNavigate();
+  const [exams, setExams] = useState([]);
   const [availableBatches, setAvailableBatches] = useState([]);
   const [myBatches, setMyBatches] = useState([]);
   const [showBrowser, setShowBrowser] = useState(false);
