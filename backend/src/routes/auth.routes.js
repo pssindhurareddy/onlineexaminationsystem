@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { loginLimiter } = require('../middleware/rateLimiter');
+const { loginLimiter, refreshLimiter } = require('../middleware/rateLimiter');
 const bcrypt = require('bcrypt');
 const AuthService = require('../services/authService');
 const { User, OTP } = require('../models');
@@ -50,7 +50,13 @@ router.post('/login', loginLimiter, async (req, res, next) => {
     const accessToken = AuthService.generateAccessToken(user);
     const refreshToken = await AuthService.generateRefreshToken(user);
 
-    res.cookie('refresh_token', refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 7 * 24 * 3600000 });
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      maxAge: 7 * 24 * 3600000
+    });
     
     res.json({ success: true, data: { user: { id: user.id, name: user.name, role: user.role }, accessToken } });
   } catch (err) {
@@ -223,6 +229,30 @@ router.get('/me', verifyToken, async (req, res, next) => {
     
     if (!user) return res.status(404).json({ success: false, message: 'Identity not found' });
     res.json({ success: true, data: user });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/refresh', refreshLimiter, async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies.refresh_token;
+    if (!refreshToken) return res.status(401).json({ success: false, message: 'No refresh token provided' });
+
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'your_refresh_secret_min_32_chars_long_enough');
+    } catch (err) {
+      return res.status(401).json({ success: false, message: 'Refresh token expired or invalid. Please log in again.' });
+    }
+
+    const user = await User.findByPk(decoded.id);
+    if (!user || !user.is_active) {
+      return res.status(401).json({ success: false, message: 'User not found or inactive' });
+    }
+
+    const newAccessToken = AuthService.generateAccessToken(user);
+    res.json({ success: true, data: { accessToken: newAccessToken } });
   } catch (err) {
     next(err);
   }

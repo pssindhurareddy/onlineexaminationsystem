@@ -4,7 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
-// const errorHandler = require('./middleware/errorHandler');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 
@@ -31,6 +31,7 @@ app.use((req, res, next) => {
 });
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(cookieParser());
 
 // Performance
 app.use(compression());

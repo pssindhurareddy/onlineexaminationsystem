@@ -32,9 +32,15 @@ class AuthService {
   }
 
   static async verifyAccessToken(token) {
-    // Check blacklist in Redis
-    const isBlacklisted = await redisClient.get(`bl_${token}`);
-    if (isBlacklisted) throw new Error('Token revoked');
+    // Check blacklist in Redis (non-fatal: skip if Redis is unavailable)
+    try {
+      const isBlacklisted = await redisClient.get(`bl_${token}`);
+      if (isBlacklisted) throw new Error('Token revoked');
+    } catch (err) {
+      if (err.message === 'Token revoked') throw err;
+      // Redis unavailable - proceed without blacklist check
+      console.warn('[AUTH] Redis unavailable for blacklist check, skipping');
+    }
 
     return jwt.verify(token, process.env.JWT_ACCESS_SECRET || 'your_access_secret_min_32_chars_long_enough');
   }
@@ -55,8 +61,12 @@ class AuthService {
       expires_at: expiresAt
     });
     
-    // Also store in redis for quick lookup
-    await redisClient.setEx(`otp_${userId}_${type}`, 600, otpHash);
+    // Also store in redis for quick lookup (non-fatal: skip if Redis is unavailable)
+    try {
+      await redisClient.setEx(`otp_${userId}_${type}`, 600, otpHash);
+    } catch (err) {
+      console.warn('[AUTH] Redis unavailable for OTP cache, skipping');
+    }
 
     return otp;
   }

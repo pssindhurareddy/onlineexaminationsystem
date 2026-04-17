@@ -12,4 +12,10 @@ const loginLimiter = rateLimit({
   message: { success: false, message: 'Too many login attempts, please try again after 15 minutes.' }
 });
 
-module.exports = { apiLimiter, loginLimiter };
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { success: false, message: 'Too many token refresh attempts, please try again later.' }
+});
+
+module.exports = { apiLimiter, loginLimiter, refreshLimiter };
