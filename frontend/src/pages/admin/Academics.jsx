@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
-import { Layers, Plus, Users, GraduationCap, ChevronRight, Database, BookOpen, Trash2, CheckCircle2 } from 'lucide-react';
+import { Layers, Plus, Users, GraduationCap, ChevronRight, Database, BookOpen, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AcademicsManagement() {
   const [structure, setStructure] = useState([]);
@@ -17,6 +18,12 @@ export default function AcademicsManagement() {
   const [deptData, setDeptData] = useState({ name: '', code: '' });
   const [batchData, setBatchData] = useState({ name: '', year: new Date().getFullYear() });
   const [enrollData, setEnrollData] = useState('');
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => {
     fetchStructure();
@@ -36,48 +43,58 @@ export default function AcademicsManagement() {
 
   const handleCreateDept = async (e) => {
     e.preventDefault();
-    if (!deptData.name.trim()) return alert('Department name is required.');
-    if (!deptData.code.trim()) return alert('Department code is required.');
+    if (!deptData.name.trim()) return showToast('Department name is required.', 'error');
+    if (!deptData.code.trim()) return showToast('Department code is required.', 'error');
     try {
       await api.post('/org/courses', deptData);
       setDeptData({ name: '', code: '' });
       setShowDeptModal(false);
       fetchStructure();
+      showToast('Department created.');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create department. Name or code may already exist.');
+      showToast(err.response?.data?.message || 'Failed to create department.', 'error');
     }
   };
 
   const handleCreateBatch = async (e) => {
     e.preventDefault();
-    if (!batchData.name.trim()) return alert('Section name is required.');
+    if (!batchData.name.trim()) return showToast('Section name is required.', 'error');
     try {
       await api.post('/org/sections', { ...batchData, departmentId: selectedDept.id });
       setBatchData({ name: '', year: new Date().getFullYear() });
       setShowBatchModal(false);
       fetchStructure();
+      showToast('Batch created.');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create section. Name may already exist for this year.');
+      showToast(err.response?.data?.message || 'Failed to create section.', 'error');
     }
   };
 
   const handleBulkEnroll = async (e) => {
     e.preventDefault();
     const emails = enrollData.split('\n').map(e => e.trim()).filter(e => e.includes('@'));
-    if (emails.length === 0) return alert("No valid emails detected");
-
+    if (emails.length === 0) return showToast('No valid emails detected.', 'error');
     try {
       const res = await api.post('/admin/academics/enroll-bulk', { emails, batchId: selectedBatch.id });
-      alert(res.data.message);
+      showToast(res.data.message);
       setEnrollData('');
       setShowEnrollModal(false);
     } catch (err) {
-      alert("Enrollment campaign failed.");
+      showToast('Enrollment failed.', 'error');
     }
   };
 
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700 max-w-7xl mx-auto">
+    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700 max-w-7xl mx-auto relative">
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl border shadow-2xl flex items-center gap-3 backdrop-blur-xl max-w-md ${toast.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-success/10 border-success/20 text-success'}`}>
+            {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+            <span className="text-xs font-black uppercase tracking-widest">{toast.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-4xl font-bold font-heading text-white tracking-tight">Academic Architecture</h1>
@@ -262,7 +279,7 @@ export default function AcademicsManagement() {
                  </div>
                  <div className="flex gap-4 mt-6">
                     <button type="button" onClick={() => setShowEnrollModal(false)} className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors">Abort Cycle</button>
-                    <button type="submit" className="flex-2 py-4 bg-accent text-background rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-glow flex items-center justify-center gap-3">
+                    <button type="submit" className="flex-1 py-4 bg-accent text-background rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-glow flex items-center justify-center gap-3">
                        <CheckCircle2 size={16} /> Execute Enrollment Campaign
                     </button>
                  </div>

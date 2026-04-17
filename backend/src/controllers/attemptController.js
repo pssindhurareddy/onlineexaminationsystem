@@ -128,6 +128,27 @@ class AttemptController {
       next(err);
     }
   }
+
+  static async getStudentHistory(req, res, next) {
+    try {
+      const { Op } = require('sequelize');
+      const attempts = await ExamAttempt.findAll({
+        where: {
+          user_id: req.user.id,
+          status: { [Op.in]: ['submitted', 'auto_submitted'] }
+        },
+        include: [{
+          model: Exam,
+          attributes: ['id', 'title', 'subject', 'total_marks', 'pass_marks', 'show_result_immediately', 'organization_id'],
+          where: { organization_id: req.user.organization_id }
+        }],
+        order: [['submitted_at', 'DESC']]
+      });
+      res.json({ success: true, data: attempts });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 // Deterministic shuffle using attempt ID as seed

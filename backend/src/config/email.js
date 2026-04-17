@@ -3,13 +3,16 @@ const nodemailer = require('nodemailer');
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.ethereal.email',
   port: parseInt(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+  secure: process.env.SMTP_SECURE === 'true',
   auth: {
     user: process.env.SMTP_USER || 'test_user',
     pass: process.env.SMTP_PASS || 'test_pass',
   },
+  connectionTimeout: 8000,
+  greetingTimeout: 8000,
+  socketTimeout: 8000,
   tls: {
-    rejectUnauthorized: false // Helps with self-signed certificates in some institutional environments
+    rejectUnauthorized: false
   }
 });
 

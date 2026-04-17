@@ -105,7 +105,8 @@ class AdminController {
         </div>
       `;
 
-      await sendMail(user.email, `Authorization Packet: ${org.name} Access Key`, html);
+      // Fire-and-forget — do not block the response on email delivery
+      sendMail(user.email, `Authorization Packet: ${org.name} Access Key`, html).catch(() => {});
 
       res.json({ success: true, message: 'Identity authorized. Genesis Key dispatched via email.', genesisKey });
     } catch (err) {

@@ -18,6 +18,7 @@ import UsersRoster from './pages/admin/Users';
 import AcademicsManagement from './pages/admin/Academics';
 import StudentDashboard from './pages/student/Dashboard';
 import TakeExam from './pages/student/TakeExam';
+import ExamHistory from './pages/student/ExamHistory';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ShieldCheck, BookOpen, GraduationCap } from 'lucide-react';
@@ -60,16 +61,16 @@ function App() {
             {/* Faculty Portal */}
             <Route element={<DashboardLayout allowedRoles={['faculty', 'admin']} />}>
               <Route path="faculty/dashboard" element={<FacultyDashboard />} />
-              <Route path="faculty/exams" element={<FacultyDashboard />} />
+              <Route path="faculty/exams" element={<Navigate to="question-bank" replace />} />
               <Route path="faculty/question-bank" element={<QuestionBank />} />
               <Route path="faculty/exams/:examId/results" element={<ExamResults />} />
-              <Route path="faculty/results" element={<FacultyDashboard />} />
+              <Route path="faculty/results" element={<Navigate to="question-bank" replace />} />
             </Route>
 
             {/* Student Portal Dashboard */}
             <Route element={<DashboardLayout allowedRoles={['student']} />}>
               <Route path="student/dashboard" element={<StudentDashboard />} />
-              <Route path="student/history" element={<div className="p-8 text-center text-gray-500">Examination History</div>} />
+              <Route path="student/history" element={<ExamHistory />} />
             </Route>
 
             {/* Standalone Secure Exam Window (Outside Layout) */}

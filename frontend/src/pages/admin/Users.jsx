@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
-import { UserPlus, Power, Shield, User, Mail, Database, CheckCircle2, Copy, Users, ClipboardCheck, History, XCircle, GraduationCap, ChevronRight } from 'lucide-react';
+import { UserPlus, Power, Shield, User, Mail, Database, CheckCircle2, Copy, Users, ClipboardCheck, History, XCircle, GraduationCap, ChevronRight, AlertCircle, Key } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function UsersRoster() {
   const [activeTab, setActiveTab] = useState('registry'); // 'registry' or 'requests'
@@ -19,6 +20,12 @@ export default function UsersRoster() {
   const [provisionData, setProvisionData] = useState({ name: '', email: '', role: 'student' });
   const [bulkList, setBulkList] = useState('');
   const [results, setResults] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => {
     fetchData();
@@ -74,7 +81,7 @@ export default function UsersRoster() {
       setProvisionData({ name: '', email: '', role: 'student' });
       setBulkList('');
     } catch (err) {
-      alert(err.response?.data?.message || 'Provisioning failed.');
+      showToast(err.response?.data?.message || 'Provisioning failed.', 'error');
     }
   };
 
@@ -83,17 +90,17 @@ export default function UsersRoster() {
       await api.patch(`/admin/users/${id}/toggle`);
       fetchData();
     } catch (err) {
-      alert("Status update failed.");
+      showToast('Status update failed.', 'error');
     }
   };
 
   const handleAuthorize = async (id) => {
     try {
-      await api.patch(`/admin/users/${id}/approve`);
-      alert("Identity Authorized.");
+      const res = await api.patch(`/admin/users/${id}/approve`);
+      showToast(`Identity authorized. Genesis Key: ${res.data.genesisKey}`);
       fetchData();
     } catch (err) {
-      alert("Authorization failed.");
+      showToast('Authorization failed.', 'error');
     }
   };
 
@@ -105,9 +112,10 @@ export default function UsersRoster() {
         batchIds: selectedBatchIds 
       });
       setShowEnrollModal(false);
+      showToast('Academic enrollment updated.');
       fetchData();
     } catch (err) {
-      alert("Sync failed.");
+      showToast('Sync failed.', 'error');
     }
   };
 
@@ -119,7 +127,16 @@ export default function UsersRoster() {
   };
 
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700 max-w-7xl mx-auto">
+    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700 max-w-7xl mx-auto relative">
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl border shadow-2xl flex items-center gap-3 backdrop-blur-xl max-w-md ${toast.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-success/10 border-success/20 text-success'}`}>
+            {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+            <span className="text-xs font-black uppercase tracking-widest">{toast.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-4xl font-bold font-heading text-white tracking-tight">Identity Management</h1>
@@ -320,7 +337,7 @@ export default function UsersRoster() {
 
                  <div className="flex gap-4 pt-4 border-t border-white/5">
                     <button type="button" onClick={() => setShowEnrollModal(false)} className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white">Cancel</button>
-                    <button type="submit" className="flex-2 py-4 bg-accent text-background rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-glow">Apply Sync</button>
+                    <button type="submit" className="flex-1 py-4 bg-accent text-background rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-glow">Apply Sync</button>
                  </div>
               </form>
            </div>

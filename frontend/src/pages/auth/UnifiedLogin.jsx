@@ -76,7 +76,7 @@ export default function UnifiedLogin({ roleConfig }) {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
                <label className="text-xs font-medium text-gray-300">Security Key</label>
-               <Link to="/forgot-password" element="a" className="text-[10px] text-accent hover:text-accent/80 transition-colors">Forgot Cipher?</Link>
+               <Link to={`/org/${orgSlug}/forgot-password`} className="text-[10px] text-accent hover:text-accent/80 transition-colors">Forgot Cipher?</Link>
             </div>
             <input 
               {...register('password')}
